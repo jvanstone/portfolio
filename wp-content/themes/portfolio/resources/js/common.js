@@ -1,10 +1,6 @@
-'use strict';
-const bootstrap = require('bootstrap');
+import bootstrap from 'bootstrap';
 
 console.log('Hi there!');
-console.log('Hi there! x2 ');
-
-
 
 console.log('test', test());
 
