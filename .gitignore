@@ -11,7 +11,9 @@
 
 # files to ignore
 /.DS_Store
+/wp-content/.DS_Store
 /wp-content/themes/.DS_Store
+/wp-content/plugins/.DS_Store
 /wp-content/themes/portfolio/old.js
 /wp-config-local.php
 /wp-config-sample.php
