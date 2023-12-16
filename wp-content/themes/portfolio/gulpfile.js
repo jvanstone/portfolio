@@ -2,7 +2,7 @@ const { src, dest, parallel, series, watch } = require('gulp');
 const minifyCss = require('gulp-clean-css');
 //const sourceMap = require('gulp-sourcemaps');
 const concat = require('gulp-concat');
-const uglify = require('gulp-uglify');
+const uglify = require('gulp-terser');
 const gulpESLintNew = require('gulp-eslint-new');
 const sass = require('gulp-sass')(require('sass'));
 
@@ -14,8 +14,9 @@ const styles = () => {
 		.pipe(dest('./dist/css/'));
 };
 
-const jsFile = () => {
+const jsFile = (cb) => {
 	src('./resources/js/common.js').pipe(uglify()).pipe(dest('./dist/js/'));
+	cb();
 };
 
 const runLinter = () => {
@@ -39,9 +40,4 @@ exports.styles = styles;
 exports.jsFile = jsFile;
 exports.lint = runLinter;
 exports.watchFiles = watchFiles;
-exports.default = series(
-	watchFiles,
-	runLinter,
-	parallel(styles, jsFile),
-  );
-  
+exports.default = series(runLinter,styles, jsFile);	

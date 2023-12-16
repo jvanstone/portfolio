@@ -23,6 +23,7 @@
     "gulp-concat": "^2.6.1",
     "gulp-eslint": "^6.0.0",
     "gulp-sass": "^5.1.0",
+    "gulp-terser": "^2.1.0",
     "gulp-uglify": "^2.0.0",
     "postcss": "^8.4.21",
     "prettier": "^2.8.2",
