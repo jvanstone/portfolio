@@ -1,0 +1,18 @@
+# gitignore file for portfolio theme
+
+# folders to ignore.
+.vscode
+/wp-content/themes/portfolio/bin
+/wp-content/themes/portfolio/node_modules
+/wp-content/themes/portfolio/static
+/wp-content/themes/portfolio/tests
+
+/wp-content/uploads/
+
+# files to ignore
+/.DS_Store
+/wp-content/themes/.DS_Store
+/wp-content/themes/portfolio/old.js
+/wp-config-local.php
+/wp-config-sample.php
+/wp-config.php

@@ -1,0 +1,20 @@
+body {
+	background-color: $background-color;
+	font-family: Courier, monospace;
+	text-align: center;
+}
+
+a {
+	text-decoration: none;
+	color: $black;
+
+	&:hover {
+		color: $red;
+		border-bottom: 4px dashed $red;
+	}
+
+	&:visited {
+		color: $black;
+
+	}
+}
