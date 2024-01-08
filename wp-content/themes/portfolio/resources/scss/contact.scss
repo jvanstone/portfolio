@@ -1,0 +1,57 @@
+.contact {
+	padding: 3rem 0;
+	
+	&__form {
+		.wpcf7 {
+			form {
+		
+				p {
+					width: 100%;
+				}
+		
+				label {
+					width: 100%;
+		
+					span.label {
+						display: none;
+						
+					}
+				}
+
+				input[type="text"],
+				input[type="email"] {
+					width: 100% !important;
+
+					::placeholder {
+						color: $gray-600;
+					}
+				}
+				
+		
+				textarea {
+					height: 6rem;
+					width: 100% !important;
+
+					&::placeholder {
+						color: $gray-600;
+					}
+				}
+		
+				.wpcf7-submit {
+					margin: 1rem 0;
+				}
+			}
+		}
+	}
+
+	&__details {
+		background-color: $dark;
+		border-radius: .5rem;
+		color: $white;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		padding: 2.25rem;
+		width: 100%;
+	}
+}
