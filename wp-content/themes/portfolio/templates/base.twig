@@ -42,34 +42,9 @@
 	</div>
 </section>
 
-{% if contact_section %}
-	<section class="contact">
-		<div class="container">
-			<div class="row">
-				<div class="col-12 col-md-8">
-					<div class="contact__form">
-					{% filter shortcodes|raw %} [contact-form-7 id="7946c71" title="Contact Now"] {% endfilter %}
-					</div>
-				</div>
-				<div class="col-12 col-md-4 d-md-flex flex-col">
+{% include '/partial/contact-section.twig' %}
 
-					<div class="contact__details">
-					
-						<h2>{{site.name}}</h2>
-
-						<div class="contact__details__links">
-							<div class=""><a href="">GitHub</a></div>
-							<div class=""><a href="">LinkedIn</a></div>
-						</div>
-
-						<a class="btn btn-secondary">View Resume</a>
-					</div>
-						
-				</div>
-			</div>
-		</div>
-	</section>
-{% endif %}
+{% include 'modal--resume.twig'%}
 
 {% block footer %}
 	<footer id="footer">
