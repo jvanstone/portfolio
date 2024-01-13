@@ -1,0 +1,30 @@
+{% if contact_section %}
+	<section class="contact">
+		<div class="container">
+			<div class="row">
+				<h2 class="mb-4">{{ __('Contact Now') }}</h2>
+				<div class="col-12 col-md-8">
+					<div class="contact__form">
+					{% filter shortcodes|raw %} [contact-form-7 id="7946c71" title="Contact Now"] {% endfilter %}
+					</div>
+				</div>
+				<div class="col-12 col-md-4 d-md-flex flex-col">
+
+					<div class="contact__details">
+					
+						<h2>{{site.name}}</h2>
+
+						<ul class="contact__details__links">
+							<li><a class="social-icon social-icon__github" href="https://github.com/jvanstone" target="_blank">GitHub</a></li>
+							<li><a class="social-icon social-icon__linkedin" href="https://www.linkedin.com/in/jason-vanstone-ca/" target="_blank">LinkedIn</a></li>
+							<li><a class="social-icon social-icon__telephone" href="tel:+1-647-218-8428">+1-647-218-8428</a>
+						</ul>
+
+						<a class="btn btn-secondary" href="#" data-bs-toggle="modal" data-bs-target="#viewResume">View Resume</a>
+					</div>
+						
+				</div>
+			</div>
+		</div>
+	</section>
+{% endif %}
