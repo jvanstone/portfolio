@@ -1,0 +1,7 @@
+section {
+	padding: 1.5rem 0;
+
+	@include media-breakpoint-up(sm) {
+		padding: 2.25rem 0;
+	}
+}
