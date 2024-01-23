@@ -1,0 +1,26 @@
+<section class="featured-posts">
+	
+	<div class="container">
+
+		<h2 class="section-heading section-heading--red mb-4">{{ __('Featured Posts') }}</h2>
+
+		<div class='featured-posts__slider mx-3 px-1 px-md-3'>
+				
+			{% for post in featured_posts %}
+
+				<div class="d-flex flex-column align-items-center px-2">
+					<h2 class="mb-3">{{post.title}}</h2>
+
+					<div class="img-wrapper">
+						<img class="img-fluid" src="{{ TimberImage(post.thumbnail).src }}" />
+					</div>
+
+					<p>{{post.post_excerpt}}</p>
+
+					<a class="btn btn-primary" href="{{post.link}}">Learn more</a>
+
+				</div>
+			{% endfor %}
+		</div>
+	</div>
+</section>
