@@ -58,7 +58,11 @@
 @import "../../node_modules/slick-slider/slick/slick-theme.css";
 
 @import "common.scss";
-@import "section-heading.scss";
-@import "footer.scss";
-@import "contact.scss";
-@import "featured-posts-slider";
+
+@import "./partial/section-heading.scss";
+@import "./partial/footer.scss";
+@import "./partial/contact.scss";
+
+@import "./sliders/featured-posts-slider.scss";
+
+@import "./utilities/tease.scss";

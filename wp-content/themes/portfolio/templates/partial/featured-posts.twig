@@ -8,18 +8,8 @@
 				
 			{% for post in featured_posts %}
 
-				<div class="d-flex flex-column align-items-center px-2">
-					<h2 class="mb-3">{{post.title}}</h2>
+				{% include "utilities/tease-post.twig" %}
 
-					<div class="img-wrapper">
-						<img class="img-fluid" src="{{ TimberImage(post.thumbnail).src }}" />
-					</div>
-
-					<p>{{post.post_excerpt}}</p>
-
-					<a class="btn btn-primary" href="{{post.link}}">Learn more</a>
-
-				</div>
 			{% endfor %}
 		</div>
 	</div>

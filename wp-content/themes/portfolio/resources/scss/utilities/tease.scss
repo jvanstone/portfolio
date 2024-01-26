@@ -1,0 +1,14 @@
+.tease {
+
+	.img-wrapper {
+		aspect-ratio: 16/9;
+		margin-bottom: 1rem;
+
+		img {
+			border-radius: .25rem;
+			object-fit: cover;
+			height: 100%;
+			width: 100%;
+		}
+	}
+}
