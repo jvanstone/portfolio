@@ -1,4 +1,5 @@
 /** Custom CSS **/	
+@import "./fonts/fonts.scss";
 
 @import "../../node_modules/bootstrap/scss/mixins/banner";
 @include bsBanner("");
