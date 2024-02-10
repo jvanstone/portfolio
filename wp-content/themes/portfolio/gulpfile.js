@@ -14,6 +14,12 @@ const styles = () => {
 		.pipe(dest('./dist/css/'));
 };
 
+
+const jsWatchFiles = (cb) => {
+	src('./resources/js/common.js').pipe(dest('./dist/js/'));
+	cb();
+};
+
 const jsFile = (cb) => {
 	src('./resources/js/common.js').pipe(uglify()).pipe(dest('./dist/js/'));
 	cb();
@@ -32,7 +38,7 @@ const watchFiles = () => {
 	watch('./resources/scss/**/*.scss', styles);
 	watch(
 		['./resources/js/**.js', '!node_modules/**'],
-		parallel(runLinter, styles, jsFile)
+		parallel(runLinter, styles, jsWatchFiles)
 	  );	
 };	
 
