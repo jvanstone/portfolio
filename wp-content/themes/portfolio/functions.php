@@ -70,6 +70,7 @@ class Icarus extends Timber\Site {
 	/** This is where you can register custom post types. */
 	public function register_post_types() {
 
+		include __DIR__ .  '/inc/register-post-types.php';
 	}
 	/** This is where you can register custom taxonomies. */
 	public function register_taxonomies() {
@@ -84,12 +85,13 @@ class Icarus extends Timber\Site {
 		
 		$context['contact_section'] = get_field( 'contact_section' );
 
-		// Using the WP_Query argument format.
-		$posts = Timber::get_posts([
+		$context['featured_posts'] = Timber::get_posts([
 			'post_type' => 'post',
 		]);
 
-		$context['featured_posts'] = $posts;
+		$context['clients'] = Timber::get_posts( [
+			'post_type'     => 'client',
+		] );
 
 		return $context;
 	}
@@ -155,7 +157,7 @@ class Icarus extends Timber\Site {
 			wp_enqueue_script( 'bootstrap-js', get_template_directory_uri() . '/node_modules/bootstrap/dist/js/bootstrap.min.js', array(), '1.0.0', true );
 			wp_enqueue_script( 'slick-js', get_template_directory_uri() . '/node_modules/slick-slider/slick/slick.js', array(), '', true );
 
-			wp_register_script('theme-js', get_theme_file_uri('/dist/js/common.js'), array( 'jquery' ), '1.0');
+			wp_register_script('theme-js', get_theme_file_uri('/dist/js/common.js'), array( 'jquery' ), '1.0', true);
 			wp_enqueue_script('theme-js');
 		}
 		add_action( 'wp_enqueue_scripts', 'wpdocs_theme_name_scripts' );
