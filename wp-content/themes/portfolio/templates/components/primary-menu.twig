@@ -1,0 +1,36 @@
+<nav  id="nav-main" class="navbar navbar-dark bg-dark" role="navigation">
+	<div class="container">
+		<a class="navbar-brand" href="{{site.url}}">{{site.title}}</a>
+
+		<button class="navbar-toggler primary-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasPrimary" aria-controls="offcanvasPrimary">
+			<span></span>
+			<span></span>
+			<span></span>
+		</button>
+
+		<div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="offcanvasPrimary" aria-labelledby="offcanvasPrimaryLabel">
+			<div class="offcanvas-header">
+				<h3 class="offcanvas-title" id="offcanvasPrimaryLabel">{{site.title}}</h3>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+			</div>
+			<div class="offcanvas-body">
+				{% include "menu.twig" with {'items': primary.get_items} %}
+
+{# 				<form class="d-flex mt-3" role="search">
+					<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+					<button class="btn btn-success" type="submit">Search</button>
+				</form> #}
+
+				<hr class="my-5"/>
+
+				<ul class="section--contact__details__links">
+					<li><a class="social-icon social-icon__github" href="https://github.com/jvanstone" target="_blank">GitHub</a></li>
+					<li><a class="social-icon social-icon__linkedin" href="https://www.linkedin.com/in/jason-vanstone-ca/" target="_blank">LinkedIn</a></li>
+					<li><a class="social-icon social-icon__telephone" href="tel:+1-647-218-8428">+1-647-218-8428</a>
+				</ul>
+			</div>
+			
+		</div>
+	</div>
+</nav>
+<!-- #nav -->

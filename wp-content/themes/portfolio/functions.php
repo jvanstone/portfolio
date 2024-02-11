@@ -93,6 +93,19 @@ class Icarus extends Timber\Site {
 			'post_type'     => 'client',
 		] );
 
+		// Set all nav menus in context.
+		foreach (array_keys(get_registered_nav_menus()) as $location) {
+			// Bail out if menu has no location.
+			if (!has_nav_menu($location)) {
+				continue;
+			}
+	
+			$menu = new Timber\Menu($location);
+		
+			$context[$location] = $menu;
+		}
+	
+
 		return $context;
 	}
 
@@ -148,6 +161,13 @@ class Icarus extends Timber\Site {
 		);
 
 		add_theme_support( 'menus' );
+
+		register_nav_menus(
+			array(
+			'primary' => __( 'Primary Menu' ),
+			'secondary' => __( 'Secondary Menu' )
+			)
+		);
 
 		/**
 		 * Enqueue The theme css and need js files

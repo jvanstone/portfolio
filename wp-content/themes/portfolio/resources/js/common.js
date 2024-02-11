@@ -10,7 +10,7 @@
 	 *  Featured Post Slider
 	 * 
 	 */
-	$('.featured-posts__slider').slick({
+	$('.section--featured-posts__slider').slick({
 		arrows: true,
 		dots: true,
 		infinite: true,
@@ -42,6 +42,21 @@
 			}
 		}
 		]
+	});
+
+	/** offcanvasPrimary */
+	$(window).scroll(function() {    
+		var scroll = $(window).scrollTop();
+
+		if (scroll >= 50) {
+			$(".header").addClass("fixed-top");
+		} else {
+			$(".header").removeClass("fixed-top");
+		}
+	});
+
+	$('#offcanvasPrimary a').click(function(){
+		$('.offcanvas').offcanvas('hide');
 	});
 
 
@@ -85,8 +100,6 @@
 
 			window.onresize = () => {
 
-				console.log($openAccordion);
-			
 				if ($openAccordion.length && $screenWidthMinimum.matches) {
 					showNewThumbnail($openAccordion);
 				}

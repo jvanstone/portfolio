@@ -4,24 +4,11 @@
 	{% block head %}{% endblock %}
 </head>{% endblock %}<body class="{{body_class}}" data-template="base.twig">
 <a class="skip-link screen-reader-text" href="#content">{{ _e( 'Skip to content') }}</a>
+
 <header class="header">
-	<div class="container">
 	{% block header %}
-		<nav id="nav-main" class="navbar navbar-expand-lg navbar-light" role="navigation">
-			<div class="container-fluid">
-				<a class="navbar-brand" href="{{site.url}}" rel="home">{{site.name}}</a>
-				<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				
-				<div class="collapse navbar-collapse" id="navbarNav">
-					{% include "menu.twig" with {'items': menu.get_items} %}
-				</div>
-			</div>
-		</nav>
-			<!-- #nav -->
+		{% include '/components/primary-menu.twig' %}
 	{% endblock %}
-	</div>
 </header>
 
 <section id="content" role="main" class="content-wrapper">
@@ -49,13 +36,12 @@
 {% block secondary_content %}
 {% endblock %}
 
-
 {% block footer %}
 	<footer id="footer">
 		<div class="container">
-			{% include 'footer.twig' %}
+			{% include '/partial/footer.twig' %}
 		</div>
 	</footer>
 	{{ function('wp_footer') }}
-	{% include 'modal--resume.twig'%}
+	{% include '/partial/modal--resume.twig'%}
 {% endblock %}</body></html>

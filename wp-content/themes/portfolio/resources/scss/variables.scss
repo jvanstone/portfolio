@@ -1207,7 +1207,7 @@ $navbar-toggler-padding-y:          .25rem !default;
 $navbar-toggler-padding-x:          .75rem !default;
 $navbar-toggler-font-size:          $font-size-lg !default;
 $navbar-toggler-border-radius:      $btn-border-radius !default;
-$navbar-toggler-focus-width:        $btn-focus-width !default;
+$navbar-toggler-focus-width:        .125rem;
 $navbar-toggler-transition:         box-shadow .15s ease-in-out !default;
 
 $navbar-light-color:                rgba(var(--#{$prefix}emphasis-color-rgb), .65) !default;
@@ -1703,10 +1703,10 @@ $spinner-border-width-sm: .2em !default;
 // Close
 
 // scss-docs-start close-variables
-$btn-close-width:            1em !default;
+$btn-close-width:            1.5rem !default;
 $btn-close-height:           $btn-close-width !default;
 $btn-close-padding-x:        .25em !default;
-$btn-close-padding-y:        $btn-close-padding-x !default;
+$btn-close-padding-y:        .5rem !default;
 $btn-close-color:            $black !default;
 $btn-close-bg:               url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='#{$btn-close-color}'><path d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/></svg>") !default;
 $btn-close-focus-shadow:     $focus-ring-box-shadow !default;
@@ -1721,7 +1721,7 @@ $btn-close-white-filter:     invert(1) grayscale(100%) brightness(200%) !default
 // Offcanvas
 
 // scss-docs-start offcanvas-variables
-$offcanvas-padding-y:               $modal-inner-padding !default;
+$offcanvas-padding-y:               4rem $modal-inner-padding !default;
 $offcanvas-padding-x:               $modal-inner-padding !default;
 $offcanvas-horizontal-width:        400px !default;
 $offcanvas-vertical-height:         30vh !default;

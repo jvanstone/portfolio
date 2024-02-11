@@ -1,4 +1,4 @@
-.contact {
+.section--contact {
 	
 	&__form {
 		.wpcf7 {
@@ -19,20 +19,23 @@
 
 				input[type="text"],
 				input[type="email"] {
-					width: 100% !important;
-
-					::placeholder {
-						color: $gray-600;
-					}
-				}
-				
-		
-				textarea {
-					height: 6rem;
+					padding: .5rem;
 					width: 100% !important;
 
 					&::placeholder {
 						color: $gray-600;
+						opacity: .75;
+					}
+				}
+
+				textarea {
+					height: 6rem;
+					padding: .5rem;
+					width: 100% !important;
+
+					&::placeholder {
+						color: $gray-600;
+						opacity: .75;
 					}
 				}
 		

@@ -1,10 +1,10 @@
-<section class="featured-posts">
+<section id="featured-posts" class="section--featured-posts">
 	
 	<div class="container">
 
-		<h2 class="section-heading section-heading--red mb-4">{{ __('Featured Posts') }}</h2>
+		<h2 class="section-heading section-heading--red mb-4"><span>{{ __('Featured Posts') }}</span></h2>
 
-		<div class='featured-posts__slider mx-3 px-1 px-md-3'>
+		<div class='section--featured-posts__slider mx-3 px-1 px-md-3'>
 				
 			{% for post in featured_posts %}
 
