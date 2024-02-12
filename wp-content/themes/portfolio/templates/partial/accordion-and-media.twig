@@ -1,36 +1,38 @@
-<section id="client-samples" class="section--clients">
-	<div class="container">
+{% if clients %}
+	<section id="client-samples" class="section--clients">
+		<div class="container">
 
-	<h2 class="section-heading section-heading--blue"><span>{{__('Client Samples')}}</span></h2>
-		<div class="row">
-			<div class="col-12 col-md-6">
+		<h2 class="section-heading section-heading--blue"><span>{{__('Client Samples')}}</span></h2>
+			<div class="row">
+				<div class="col-12 col-md-6">
 
-				<div class="accordion" id="accordion-clients">
-					{% for client in clients %}
-						<div class="accordion-item">
-							<h2 class="accordion-header" id="heading-{{loop.index}}">
-							<button class="accordion-button {{ 1 != loop.index ? 'collapsed' : null }}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{loop.index}}" aria-expanded="{{ 1 == loop.index ? 'true' : 'false' }}" aria-controls="collapse-{{loop.index}}">
-								{{ client.title }}
-							</button>
-							</h2>
-							<div id="collapse-{{loop.index}}" class="accordion-collapse  collapse {{ 1 == loop.index ? 'show' : null }}" aria-labelledby="heading-{{loop.index}}" data-bs-parent="#accordion-clients">
-								<div class="accordion-body">
+					<div class="accordion" id="accordion-clients">
+						{% for client in clients %}
+							<div class="accordion-item">
+								<h2 class="accordion-header" id="heading-{{loop.index}}">
+								<button class="accordion-button {{ 1 != loop.index ? 'collapsed' : null }}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{loop.index}}" aria-expanded="{{ 1 == loop.index ? 'true' : 'false' }}" aria-controls="collapse-{{loop.index}}">
+									{{ client.title }}
+								</button>
+								</h2>
+								<div id="collapse-{{loop.index}}" class="accordion-collapse  collapse {{ 1 == loop.index ? 'show' : null }}" aria-labelledby="heading-{{loop.index}}" data-bs-parent="#accordion-clients">
+									<div class="accordion-body">
 
-									{{ client.post_content }}
+										{{ client.post_content }}
 
+									</div>
+
+									<img class="client-thumbnail img-fluid d-block d-md-none border rounded" src="{{client.thumbnail.src}}" alt="{{client.thumbnail.alt}}" />
 								</div>
-
-								<img class="client-thumbnail img-fluid d-block d-md-none border rounded" src="{{client.thumbnail.src}}" alt="{{client.thumbnail.alt}}" />
 							</div>
-						</div>
-					{% endfor %}
+						{% endfor %}
+					</div>
+				</div>
+				
+				<div class="col-12 col-md-6	d-none d-md-block">
+
+					<img id="client-thumbnail-desktop" class="img-fluid border rounded-lg" src="" alt="" />
 				</div>
 			</div>
-			
-			<div class="col-12 col-md-6	d-none d-md-block">
-
-				<img id="client-thumbnail-desktop" class="img-fluid border rounded-lg" src="" alt="" />
-			</div>
 		</div>
-	</div>
-</section>
+	</section>
+{% endif %}
