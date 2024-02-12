@@ -7,7 +7,7 @@
 
 				<div class="col-12 col-md-8">
 					<div class="section--contact__form">
-					{% filter shortcodes|raw %} [contact-form-7 id="{{contact_section.form_id}}" title="Contact Now" html_id="contact-now"] {% endfilter %}
+						{{ function('do_shortcode', '[contact-form-7 id="' ~ contact_section.form_id ~ '" title="Contact Now" html_id="contact-now"]') }}
 					</div>
 				</div>
 				<div class="col-12 col-md-4 d-md-flex flex-col">
