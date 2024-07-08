@@ -1,5 +1,5 @@
 /** Custom CSS **/	
-@import "./fonts/fonts.scss";
+@import "./fonts/fonts";
 
 @import "../../node_modules/bootstrap/scss/mixins/banner";
 @include bsBanner("");
@@ -58,13 +58,15 @@
 @import "../../node_modules/slick-slider/slick/slick.scss";
 @import "../../node_modules/slick-slider/slick/slick-theme.css";
 
-@import "common.scss";
+@import "common/footer";
+@import "common/links";
+@import "common/navbar";
+@import "common/section";
 
-@import "./partial/section-heading.scss";
-@import "./partial/footer.scss";
-@import "./partial/contact.scss";
-@import "./partial/navbar-toggler.scss";
+@import "components/accordion-and-media";
 
-@import "./sliders/featured-posts-slider.scss";
+@import "partial/contact";
 
-@import "./utilities/tease.scss";
+@import "sliders/featured-posts-slider";
+
+@import "utilities/tease";

@@ -1,0 +1,42 @@
+<div class="component--accordion-and-media">
+	<div class="row">
+		<div class="col-12 col-md-6">
+			<div class="accordion" id="accordion-content">
+				{% for accordion in accordion_items %}
+					<div class="accordion-item">
+						<h2 class="accordion-header" id="heading-{{loop.index}}">
+							<button class="accordion-button {{ 1 != loop.index ? 'collapsed' : null }}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{loop.index}}" aria-expanded="{{ 1 == loop.index ? 'true' : 'false' }}" aria-controls="collapse-{{loop.index}}">
+								{{ accordion.title }}
+							</button>
+						</h2>
+						<div id="collapse-{{loop.index}}" class="accordion-collapse  collapse {{ 1 == loop.index ? 'show' : null }}" aria-labelledby="heading-{{loop.index}}" data-bs-parent="#accordion-content">
+							<div class="accordion-body">
+								{{ accordion.post_content }}
+
+								{% if accordion.client_url %}
+									<a class="learn-more" href="{{accordion.client_url}}" target="_blank">View Website</a>
+								{% endif %}
+
+								{% if terms %}
+									<ul class="accordion__tags mt-3">
+										{% for term in accordion.terms(terms)  %}
+											<li class="badge rounded-pill bg-primary">
+												{{term.title}}
+											</li>
+										{% endfor %}
+									</ul>
+								{% endif %}
+							</div>
+
+							<img class="accordion-thumbnail img-fluid d-block d-md-none border rounded" src="{{accordion.thumbnail.src}}" alt="{{accordion.thumbnail.alt}}" />
+						</div>
+					</div>
+				{% endfor %}
+			</div>
+		</div>
+		
+		<div class="col-12 col-md-6	d-none d-md-block">
+			<img id="accordion-thumbnail-desktop" class="img-fluid border rounded-lg" src="" alt="" />
+		</div>
+	</div>
+</div>
