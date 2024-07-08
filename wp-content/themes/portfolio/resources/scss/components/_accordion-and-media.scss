@@ -1,0 +1,17 @@
+.component--accordion-and-media {
+	.accordion {
+		&-header {
+			font-family: $font-family-sans-serif;
+		}
+
+		&-button {
+			font-weight: 700 !important;
+		}
+		&__tags {
+			gap: .5rem;
+			display: flex;
+			flex-flow: row wrap;
+			padding-left: 0;
+		}
+	}
+}

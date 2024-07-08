@@ -92,7 +92,7 @@ class Icarus extends Timber\Site {
 		$context['clients'] = Timber::get_posts( [
 			'post_type'     => 'client',
 		] );
-
+		
 		// Set all nav menus in context.
 		foreach (array_keys(get_registered_nav_menus()) as $location) {
 			// Bail out if menu has no location.
@@ -105,7 +105,6 @@ class Icarus extends Timber\Site {
 			$context[$location] = $menu;
 		}
 	
-
 		return $context;
 	}
 

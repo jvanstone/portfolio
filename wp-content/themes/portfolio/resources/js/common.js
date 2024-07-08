@@ -60,30 +60,29 @@
 	});
 
 
-	/** Accordion Side Image */
+	/** Accordion and Media */
 
-	const $sectionClients = $('.section--clients'); 
+	const $sectionAccordions = $('.component--accordion-and-media'); 
 	const $screenWidthMinimum = window.matchMedia("(min-width: 768px)");
 
-	if ($sectionClients.length) (() => {
+	if ($sectionAccordions.length) (() => {
 
-		$sectionClients.each((index, section) => {
+		$sectionAccordions.each((index, section) => {
 
-			const $accordionClients = $(section).find('#accordion-clients');
-			const $imageContainer   = $(section).find('#client-thumbnail-desktop');
-			const $openAccordion    = $accordionClients.find('.accordion-collapse.show');
-			const $accordionButtons = $accordionClients.find('.accordion-button');
+			const $accordionContents = $(section).find('#accordion-content');
+			const $imageContainer   = $(section).find('#accordion-thumbnail-desktop');
+			const $openAccordion    = $accordionContents.find('.accordion-collapse.show');
+			const $accordionButtons = $accordionContents.find('.accordion-button');
 			
 			const showNewThumbnail = (accordion) => {
-				const $clientThumbnail = accordion.find('.client-thumbnail');
+				const $accordionThumbnail = accordion.find('.accordion-thumbnail');
 
-				$imageContainer.attr('src', $clientThumbnail.attr('src'));
-				$imageContainer.attr('alt', $clientThumbnail.attr('alt'));
+				$imageContainer.attr('src', $accordionThumbnail.attr('src'));
+				$imageContainer.attr('alt', $accordionThumbnail.attr('alt'));
 
-				$clientThumbnail.hide();
+				$accordionThumbnail.hide();
 			};
 
-			
 			if ($openAccordion.length && $screenWidthMinimum.matches) showNewThumbnail($openAccordion);
 
 			$accordionButtons.each((index, button) => {
@@ -103,7 +102,6 @@
 				if ($openAccordion.length && $screenWidthMinimum.matches) {
 					showNewThumbnail($openAccordion);
 				}
-				
 			};
 		});
 	})();

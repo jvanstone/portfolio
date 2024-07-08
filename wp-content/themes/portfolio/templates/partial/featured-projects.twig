@@ -1,0 +1,11 @@
+<section id="featured-projects" class="section--featured-projects">
+	<div class="container">
+
+		<h2 class="section-heading section-heading--blue"><span>{{__('Featured Projects')}}</span></h2>
+
+		{% include '/components/accordion-and-media.twig' with {
+			accordion_items: clients,
+			terms: 'technology',
+		} %}
+	</div>
+</section>

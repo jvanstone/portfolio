@@ -7,39 +7,39 @@
 
 <header class="header">
 	{% block header %}
-		{% include '/components/primary-menu.twig' %}
+		{% include '/common/primary-menu.twig' %}
 	{% endblock %}
 </header>
 
-<section id="content" role="main" class="content-wrapper">
-	<div class="container">
-		{% if title %}
-			<h1>{{title}}</h1>
-		{% endif %}
-		<div class="wrapper {{sidebar_class}}">
-			{% block content %}
-				Sorry, no content
-			{% endblock %}
+<main id="content" role="main">
+
+	<section class="page">
+		<div class="container">
+			{% if title %}
+				<h1>{{title}}</h1>
+			{% endif %}
+			<div class="wrapper {{sidebar_class}}">
+				{% block content %}
+					Sorry, no content
+				{% endblock %}
+			</div>
+			{% if sidebar %}
+				<aside class="layout-sidebar">
+					{{sidebar}}
+				</aside>
+			{% endif %}
 		</div>
-		{% if sidebar %}
-			<aside class="layout-sidebar">
-				{{sidebar}}
-			</aside>
-		{% endif %}
-	</div>
-</section>
+	</section>
 
-{% block featured_posts %}
-	{% include '/partial/featured-posts.twig' %}
-{% endblock %}
+	{% block secondary_content %}
+	{% endblock %}
 
-{% block secondary_content %}
-{% endblock %}
+</main>
 
 {% block footer %}
 	<footer id="footer">
 		<div class="container">
-			{% include '/partial/footer.twig' %}
+			{% include '/common/footer.twig' %}
 		</div>
 	</footer>
 	{{ function('wp_footer') }}

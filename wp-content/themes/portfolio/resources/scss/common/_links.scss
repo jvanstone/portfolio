@@ -1,0 +1,29 @@
+.learn-more {
+	border-bottom: 1px solid transparent;
+	position: relative;
+	text-decoration: none;
+
+	&::after {
+		content: '\2192';
+		margin-left: .5rem;
+	}
+
+	&::before {
+		content: "";
+		background-color: #000;
+		position: absolute;
+		height: 1.25px;
+		bottom: 0;
+		left: 0;
+		transform: scaleX(0);
+		transform-origin: bottom left;
+		transition: transform .5s ease;
+		width: 100%;
+	}
+
+	&:hover {
+		&::before {
+			transform: scaleX(1);
+		}
+	}
+}

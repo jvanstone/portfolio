@@ -1,0 +1,40 @@
+.navbar {
+
+	&-brand {
+		font-family: $font-family-cursive;
+	}	
+
+	&-toggler.primary-menu {
+		width: 56px;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+
+		span{
+			background: $white;
+			border-radius:10px;
+			display: inline-block;
+			height:.25rem;
+			margin: .25rem 0;
+			transition: .4s  cubic-bezier(0.68, -0.6, 0.32, 1.6);
+		}
+
+		span:nth-of-type(1){
+			width:50%;
+		}
+
+		span:nth-of-type(2){
+			width:100%;
+		}
+
+		span:nth-of-type(3){
+			width:75%;
+		}
+
+		&:hover {
+			span {
+				width: 100%;
+			}
+		}
+	}
+}
