@@ -1,0 +1,6 @@
+---
+ deployment:
+  tasks:
+   - export DEPLOYPATH=/home/jasonvan/public_html/portfolio/
+   - /bin/cp -R * $DEPLOYPATH
+   #update file
