@@ -16,8 +16,11 @@
 
 				<img class="img-fluid rounded" src="{{ post.thumbnail.src }}">
 
-		
 			</section>
 		</article>
 	</div><!-- /content-wrapper -->
+{% endblock %}
+
+{% block secondary_content %}
+	{% include '/partial/featured-posts.twig' %}	
 {% endblock %}
