@@ -45,5 +45,5 @@ const watchFiles = () => {
 exports.styles = styles;
 exports.jsFile = jsFile;
 exports.lint = runLinter;
-exports.watchFiles = watchFiles;
-exports.default = series(runLinter,styles, jsFile);	
+exports.build = series(runLinter, styles, jsFile);
+exports.default = watchFiles;
