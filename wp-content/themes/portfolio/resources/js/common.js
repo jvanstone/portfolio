@@ -1,10 +1,12 @@
+import 'slick-slider/slick/slick.css';
+import 'slick-slider/slick/slick-theme.css';
 import $ from 'jquery';
 import 'slick-slider';
 import 'bootstrap';
 
 (($) => {
 	"use strict";
-	console.log('test');
+	console.log('Welcome to my Portfolio ~ Jason');
 	/** 
 	 *  Featured Post Slider
 	 * 
