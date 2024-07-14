@@ -2,4 +2,9 @@ footer {
 	padding: 1rem 0;
 	background-color: $black;
 	color: $white;
+
+	h2 {
+		font-size: $h5-font-size;
+		font-family: $headings-font-family;
+	}
 }

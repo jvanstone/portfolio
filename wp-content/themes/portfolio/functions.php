@@ -171,16 +171,21 @@ class Icarus extends Timber\Site {
 		/**
 		 * Enqueue The theme css and need js files
 		 */
-		function wpdocs_theme_name_scripts() {
+		function register_style_and_scripts() {
 			wp_enqueue_style( 'theme-style', get_template_directory_uri() . '/dist/css/style.css' );
-			wp_enqueue_script( 'bootstrap-js', get_template_directory_uri() . '/node_modules/bootstrap/dist/js/bootstrap.min.js', array(), '1.0.0', true );
-			wp_enqueue_script( 'slick-js', get_template_directory_uri() . '/node_modules/slick-slider/slick/slick.js', array(), '', true );
-
-			wp_register_script('theme-js', get_theme_file_uri('/dist/js/common.js'), array( 'jquery' ), '1.0', true);
-			wp_enqueue_script('theme-js');
+			wp_enqueue_script( 'bundle', get_template_directory_uri() . '/dist/js/bundle.js', array(), '', true );
 		}
-		add_action( 'wp_enqueue_scripts', 'wpdocs_theme_name_scripts' );
+		add_action( 'wp_enqueue_scripts', 'register_style_and_scripts' );
 
+		function dequeue_jquery_migrate( $scripts ) {
+			if ( ! is_admin() && ! empty( $scripts->registered['jquery'] ) ) {
+				$scripts->registered['jquery']->deps = array_diff(
+					$scripts->registered['jquery']->deps,
+					[ 'jquery-migrate' ]
+				);
+			}
+		}
+		add_action( 'wp_default_scripts', 'dequeue_jquery_migrate' );
 	}
 
 	/** This Would return 'foo bar!'.

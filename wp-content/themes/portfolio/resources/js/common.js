@@ -1,11 +1,10 @@
-//import AOS from 'aos';
-//import 'bootstrap/dist/js/bootstrap';
-//import 'slick-slider';
+import $ from 'jquery';
+import 'slick-slider';
+import 'bootstrap';
 
 (($) => {
 	"use strict";
-	//AOS.init();
-	
+	console.log('test');
 	/** 
 	 *  Featured Post Slider
 	 * 
