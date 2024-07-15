@@ -106,4 +106,24 @@ import 'bootstrap';
 			};
 		});
 	})();
+
+	/** Add Aria Label to Contact Form 7 input */
+	const $contactForms = $('.wpcf7-form');
+
+	if ($contactForms.length) (() => {
+		$contactForms.each((index, form) => {
+
+			const $hiddenLabels = $(form).find('label.visually-hidden');
+
+			$hiddenLabels.each((index, label) => {
+			
+				const $forName = $(label).attr('for');
+				const $input = $(form).find('span #' + $forName);
+
+				$input.attr('aria-label', $(label).text());
+			});
+		});
+	})();
+
+
 })(jQuery);
