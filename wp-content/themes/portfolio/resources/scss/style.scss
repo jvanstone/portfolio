@@ -54,6 +54,10 @@
 @import "../../node_modules/bootstrap/scss/utilities/api";
 // scss-docs-end import-stack
 
+//load animate.css
+@import './../../node_modules/wow.js/css/libs/animate.css';
+
+@import "common/common";
 @import "common/footer";
 @import "common/links";
 @import "common/navbar";
