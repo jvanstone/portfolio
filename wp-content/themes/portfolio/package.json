@@ -17,7 +17,10 @@
   "author": "Jason Vanstone",
   "license": "ISC",
   "devDependencies": {
+    "@babel/core": "^7.24.9",
+    "@babel/preset-env": "^7.24.8",
     "autoprefixer": "^10.4.13",
+    "babel-loader": "^9.1.3",
     "browser-sync": "^2.27.11",
     "css-loader": "^7.1.2",
     "gulp": "^4.0.2",
@@ -30,14 +33,16 @@
     "sass": "^1.56.2",
     "slick-slider": "^1.8.2",
     "style-loader": "^4.0.0",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "wow.js": "^1.2.2"
   },
   "dependencies": {
-    "babel-loader": "^9.1.3",
     "bootstrap": "^5.3.2",
     "gulp-autoprefixer": "^9.0.0",
     "gulp-clean-css": "^4.3.0",
     "gulp-eslint-new": "^1.9.0",
-    "jquery": "^3.7.1"
+    "jquery": "^3.7.1",
+    "path": "^0.12.7",
+    "webpack-stream": "^7.0.0"
   }
 }
