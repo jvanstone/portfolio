@@ -1,0 +1,27 @@
+.error404{
+	.page {
+		height: 80vh;
+
+		.container {
+			height: 100%;
+
+			.wrapper {
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-direction: column;
+				
+				h1 {
+					margin-bottom: 4rem;
+					display: flex;
+					flex-direction: column;
+
+					.question-mark {
+						font-size: 10rem;
+					}
+				}
+			}
+		}
+	}
+}
