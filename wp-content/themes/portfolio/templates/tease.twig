@@ -1,11 +1,13 @@
+
 <article class="tease tease-{{post.post_type}} d-flex flex-column align-items-center px-2 py-3 wow fadeInUp" id="tease-{{post.ID}}">
 	{% block content %}
-		<h2 class="mb-3"><a class="text-dark text-decoration-none" href="{{post.link}}">{{post.title}}</a></h2>
-		<p>{{post.preview}}</p>
+	
+		<h2 class="mb-3"><a class="text-dark text-decoration-none">{{post.title}}</a></h2>
 		{% if post.get_thumbnail %}
-			<div class="img-wrapper">
+			<div class="img-wrapper ratio ratio-16x9">
 				<img src="{{post.thumbnail.src}}" />
 			</div>
 		{% endif %}
+		<p>{{post.preview}}</p>
 	{% endblock %}
 </article>

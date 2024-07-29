@@ -89,8 +89,8 @@ class Icarus extends Timber\Site {
 			'post_type' => 'post',
 		]);
 
-		$context['clients'] = Timber::get_posts( [
-			'post_type'     => 'client',
+		$context['projects'] = Timber::get_posts( [
+			'post_type'=> 'projects',
 		] );
 		
 		// Set all nav menus in context.

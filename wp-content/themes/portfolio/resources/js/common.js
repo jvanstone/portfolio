@@ -4,6 +4,8 @@ import $ from 'jquery';
 import 'slick-slider';
 import 'bootstrap';
 import WOW from 'wow.js';
+import './functions/functions';
+import './modules/search-projects';
 
 (($) => {
 	"use strict";

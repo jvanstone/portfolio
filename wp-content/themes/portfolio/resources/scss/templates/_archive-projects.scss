@@ -1,0 +1,40 @@
+.post-type-archive-projects{
+
+	.section--project{ 
+		background-color: $secondary;
+
+		.project-search {
+			display: flex;
+			flex-flow: row wrap;
+			gap: $grid-gutter-width;
+			width: 100%;
+			align-items: center;
+			justify-content: center;
+
+			&__option {
+				max-width: 16rem;
+				height: 40px;
+				display: flex;
+				align-items: stretch;
+			}
+
+			select, input {
+				background-color: $white;
+				border: 0;
+				height: 100%;
+				color: #000;
+
+				&::placeholder,
+				&::disabled {
+					font-weight: 400;
+					color: #000;
+				}
+			}
+		}
+	}
+
+	#no-results,
+	.btn-reset {
+		display: none;
+	}
+}
