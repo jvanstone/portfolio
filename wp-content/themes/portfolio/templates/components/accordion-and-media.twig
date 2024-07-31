@@ -1,7 +1,7 @@
 <div class="component--accordion-and-media">
 	<div class="row">
 		<div class="col-12 col-md-6 wow fadeInLeft">
-			<div class="accordion" id="accordion-content">
+			<div class="accordion shadow" id="accordion-content">
 				{% for accordion in accordion_items %}
 					<div class="accordion-item">
 						<h2 class="accordion-header" id="heading-{{loop.index}}">
@@ -36,7 +36,7 @@
 		</div>
 		
 		<div class="col-12 col-md-6	d-none d-md-block wow fadeInRight">
-			<img id="accordion-thumbnail-desktop" class="img-fluid border rounded-lg" data-wow-duration="1s"  src="" alt="" loading="lazy" />
+			<img id="accordion-thumbnail-desktop" class="img-fluid border rounded-lg shadow" data-wow-duration="1s"  src="" alt="" loading="lazy" />
 		</div>
 	</div>
 </div>

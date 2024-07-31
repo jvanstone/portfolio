@@ -1,0 +1,70 @@
+.animated-circles {
+	display: block;
+	height: 15.75rem;
+	margin: 2rem auto;
+	position: relative;
+	width: 14.25rem;
+
+	@include media-breakpoint-up(sm){
+		height: 27.5rem;
+		margin: 4rem auto;
+		width: 25rem;
+	}
+
+	.circle {
+		border: solid 2px #000;
+		box-shadow: 0 1rem 2rem rgba($black, .2);
+		height: auto;
+		border-radius: 100%;
+		max-width: 8.5rem; 
+		max-height: 8.5rem;
+		position: absolute;
+		transition: all .2s;
+		width: 100%;
+		z-index: 5;
+
+		@include media-breakpoint-up(sm){
+			border: solid 4px #000;
+			max-width: 15rem; 
+			max-height: 15rem;
+		}
+
+		&--red {
+			bottom: 0%;
+			left: 0;
+			background: rgba(239, 6, 6, 1);
+			align-self: flex-end;
+		}
+
+		&--blue{
+			background-color: rgba(127, 172, 212, 1);
+			align-self: flex-start;
+			top: 0%;
+			right: 0;
+		}
+	
+		&--yellow{
+			background-color: rgba(255, 245, 0, .5);
+			z-index: 10;
+			align-self: center;
+			top: 25%;
+			left: 50%;
+			transform: translateX(-50%);
+
+			&:hover {
+				box-shadow: 0 2rem 4rem rgba($black, .4);
+				opacity: .5;
+				transform: scale(1.1) translateY(-5px) translateX(-48%);
+				z-index: 20;
+			}
+		}
+
+		&:hover:not(.circle--yellow) {
+			box-shadow: 0 2rem 4rem rgba($black, .4);
+			opacity: .5;
+			transform: scale(1.1) translateY(-5px);
+			z-index: 40;
+		}
+
+	}
+}
