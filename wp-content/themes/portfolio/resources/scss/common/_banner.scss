@@ -2,13 +2,12 @@
 	align-items: stretch;
 	display: flex;
 	position: relative;
-	min-height: 25vh;
+	min-height: 35vh;
 	margin-bottom: 2rem;
 	overflow: hidden;
 	box-shadow: 0 1rem 2rem rgba($black, .2);
 
 	@include media-breakpoint-up(md) {
-		min-height: 35vh;
 		margin-bottom: 4rem;
 	}
 
@@ -21,6 +20,8 @@
 		position: absolute;
 		top: 0;
 		left: 0;
+		width: 100vw;
+		height: auto;
 
 		img {
 			height: 100%;
