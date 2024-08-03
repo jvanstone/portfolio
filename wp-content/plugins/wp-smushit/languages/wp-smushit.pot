@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv2.
 msgid ""
 msgstr ""
-"Project-Id-Version: Smush Pro 3.16.5\n"
+"Project-Id-Version: Smush Pro 3.16.6\n"
 "Report-Msgid-Bugs-To: https://wpmudev.com\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2024-06-20T11:19:02+00:00\n"
+"POT-Creation-Date: 2024-07-30T10:31:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.10.0\n"
 "X-Domain: wp-smushit\n"
@@ -276,7 +276,7 @@ msgstr ""
 #: core/integrations/nextgen/class-admin.php:275
 #: core/media-library/class-media-library-row.php:512
 #: core/modules/bulk/class-mail.php:65
-#: wp-smush.php:505
+#: wp-smush.php:506
 msgid "Smush"
 msgstr ""
 
@@ -472,7 +472,7 @@ msgstr ""
 #: core/class-cache-controller.php:43
 #: core/class-settings.php:705
 #: core/integrations/class-nextgen.php:181
-#: core/modules/bulk/class-background-bulk-smush.php:118
+#: core/modules/bulk/class-background-bulk-smush.php:137
 #: core/modules/class-backup.php:728
 #: core/modules/class-backup.php:747
 #: core/modules/class-dir.php:186
@@ -3629,17 +3629,17 @@ msgstr ""
 msgid "Every %d Minutes"
 msgstr ""
 
-#: core/modules/bulk/class-background-bulk-smush.php:270
+#: core/modules/bulk/class-background-bulk-smush.php:296
 msgid "Enable the email notification"
 msgstr ""
 
 #. translators: %s: a link
-#: core/modules/bulk/class-background-bulk-smush.php:274
+#: core/modules/bulk/class-background-bulk-smush.php:300
 msgid "Feel free to close this page while Smush works its magic in the background. %s to receive an email when the process finishes."
 msgstr ""
 
 #. translators: %s: Email address
-#: core/modules/bulk/class-background-bulk-smush.php:280
+#: core/modules/bulk/class-background-bulk-smush.php:306
 msgid "Feel free to close this page while Smush works its magic in the background. We’ll email you at <strong>%s</strong> when it’s done."
 msgstr ""
 
@@ -3954,11 +3954,11 @@ msgid "Automatic updation of .htaccess rules failed. Please ensure the file perm
 msgstr ""
 
 #. translators: %1$s - Requires PHP version - %2$s URL to an article about our hosting benefits.
-#: wp-smush.php:114
+#: wp-smush.php:115
 msgid "Your site is running an outdated version of PHP that is no longer supported or receiving security updates. Please update PHP to at least version %1$s at your hosting provider in order to activate Smush, or consider switching to <a href=\"%2$s\" target=\"_blank\" rel=\"noopener noreferrer\">WPMU DEV Hosting</a>."
 msgstr ""
 
-#: wp-smush.php:484
+#: wp-smush.php:485
 msgid "Get Fast!"
 msgstr ""
 

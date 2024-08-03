@@ -619,7 +619,7 @@ abstract class Background_Process extends Async_Request {
 	}
 
 	private function do_action( $action ) {
-		do_action( "{$this->identifier}_$action", $this->identifier, $this );
+		do_action( $this->action_name( $action ), $this->identifier, $this );
 	}
 
 	private function get_cron_interval_seconds() {
@@ -667,5 +667,14 @@ abstract class Background_Process extends Async_Request {
 
 	protected function is_revival_limit_reached() {
 		return $this->get_revival_count() >= $this->get_revival_limit();
+	}
+
+	/**
+	 * @param $action
+	 *
+	 * @return string
+	 */
+	public function action_name( $action ): string {
+		return "{$this->identifier}_$action";
 	}
 }

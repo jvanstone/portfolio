@@ -1097,13 +1097,18 @@ class Smush {
 			count_resize,
 			savings_resize
 		} = GlobalStats.getGlobalStats();
+
+		const failurePercentage = this.total > 0 ? Math.round( this.errors.length * 100 / this.total ) : 0;
+
 		tracker.track( 'Bulk Smush Completed', {
 			'Total Savings': this.convertToMegabytes( savings_bytes ),
 			'Total Images': count_images,
 			'Media Optimization Percentage': parseFloat( percent_optimized ),
 			'Percentage of Savings': parseFloat( savings_percent ),
 			'Images Resized': count_resize,
-			'Resize Savings': this.convertToMegabytes( savings_resize )
+			'Resize Savings': this.convertToMegabytes( savings_resize ),
+			'Total Enqueued Images': this.total,
+			'Failure Percentage': failurePercentage,
 		} );
 	}
 
