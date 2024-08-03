@@ -47,50 +47,5 @@
 		justify-content: space-between;
 		padding: 2.25rem;
 		width: 100%;
-
-		&__links {
-			display: flex;
-			flex-flow: column nowrap;
-			list-style: none;
-			margin-bottom: 1.5rem;
-			padding-left: 0;
-			row-gap: 1.5rem;
-
-			li {
-				.social-icon {
-					margin-bottom: 0;
-					display: flex;
-					column-gap: .5rem;
-					color: #CACACA;
-					text-decoration: none;
-
-					&:hover {
-						text-decoration: underline;
-					}
-
-					&::before {
-						content: ' ';
-						display: block;
-						margin-right: .5rem;
-						height: 1.5rem;
-						width: 1.5rem;
-
-					}
-
-					&__github::before {
-						background: center / cover no-repeat url($image-directory + 'github-mark-white.svg');
-					
-					}
-
-					&__linkedin::before {
-						background: center/ cover no-repeat url($image-directory + 'LinkedIn_icon.svg');
-					}
-
-					&__telephone::before {
-						background: center/ cover no-repeat url($image-directory + 'telephone.svg');
-					}
-				}
-			}
-		}
 	}
 }
