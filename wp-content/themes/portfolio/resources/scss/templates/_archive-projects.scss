@@ -1,7 +1,7 @@
 .post-type-archive-projects{
 
-	.section--project{ 
-		background-color: $secondary;
+	.section--search-projects{ 
+		background-color: rgba($cyan, .75);
 
 		.project-search {
 			display: flex;
@@ -12,7 +12,7 @@
 			justify-content: center;
 
 			&__option {
-				max-width: 16rem;
+				width: 100%;
 				height: 40px;
 				display: flex;
 				align-items: stretch;
@@ -21,8 +21,14 @@
 			select, input {
 				background-color: $white;
 				border: 0;
+				border-radius: 3px;
 				height: 100%;
 				color: #000;
+				width: 80%;
+
+				@include media-breakpoint-up(md) {
+					width: 100%;
+				}
 
 				&::placeholder,
 				&::disabled {

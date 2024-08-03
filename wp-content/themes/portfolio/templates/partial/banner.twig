@@ -1,8 +1,16 @@
-<div class="banner banner--home">
+
+{% set src   = 'projects' == archive_post_type ? 'https://jasonvanstone.com/portfolio/wp-content/uploads/2024/08/past-projects-banner.webp' : post ? post.thumbnail.src : null %}
+{% set title =  title ? title : post ? post.title : null %}
+
+<div class="banner banner--{{template}}">
 	<div class="banner__background-image">
-		<img src="{{ post.thumbnail.src }}" class="my-thumb-class" alt="Image for {{ post.title }}" />
+		<img src="{{ src }}" class="my-thumb-class" alt="Image for {{ title }}" />
 	</div>
 	<div class="banner__content">
-		<h1 class="banner__h1">{{post.title}}</h1>
+		<h1 class="banner__h1">{{title}}</h1>
 	</div>
 </div>
+
+{% if 'projects' == archive_post_type %}
+	{% include "partial/search-projects.twig" %}
+{% endif %}

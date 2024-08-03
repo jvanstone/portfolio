@@ -1,29 +1,6 @@
 {% extends "index.twig" %}
 
 {% block content %}
-
-	<section class="section section--project mb-5">
-		<form id="search-projects" class="project-search position-relative">
-			<div class="project-search__option">
-				<input id="input-keywords" aria-label="Search by keywords" type="text" class="search-input w-input" maxlength="256" name="search" data-name="search" placeholder="Search by keyword" />
-			</div>
-
-			<div class="project-search__option">
-				<select id="select-technology" aria-label="Search by technology" name="technology" class="select-technology" data-resource="data-technology">
-					<option value="" disabled="" selected="">Search by technology</option>
-					<option value="">All Technology</option>
-				</select>
-			</div>
-
-			
-			<button type="reset" class="btn-close btn-close-white btn-reset position-absolute top-0 end-0 p-0 me-4" aria-label="Reset"></button>
-			
-		</form>
-	</section>
-
-	<div id="no-results" class="border rounded border-danger my-4 p-3 text-center">
-		<p class="fw-bold">Sorry, we couldn't find what you were looking for. Please try again.</p>
-	</div>
 	
 	{{ parent() }}
 
