@@ -4,12 +4,8 @@ section {
 	@include media-breakpoint-up(sm) {
 		padding: 2.25rem 0;
 	}
-}
 
-
-.section {
-
-	&-heading{
+	.section-heading {
 		align-items: center;
 		display: flex;
 		margin-top: 1rem;
@@ -26,7 +22,6 @@ section {
 	
 		&::before {
 			content: ' ';
-			background-color: rgba(204, 204, 204, 0.5);
 			border-radius: 100%;
 			border: $black solid 2px;
 			display: block;
@@ -36,25 +31,25 @@ section {
 			@include media-breakpoint-up(sm) {
 				border-width: 3px;
 				height: 2.5rem;
-				width: 2.5rem;	
+				width: 2.5rem;
 			}
 		}
 	
 		&--blue{
 			&::before{
-				background-color: rgba(127, 172, 212, 0.5);
+				background-color: $cyan-300;
 			}
 		}
 	
 		&--green{
 			&::before{
-				background-color: rgba(126, 169, 149, 0.5);
+				background-color: $green-300;
 			}
 		}
 	
 		&--red{
 			&::before{
-				background-color: rgba(239, 6, 6, 0.50);
+				background-color: $red-300;
 			}
 		}
 	}

@@ -43,12 +43,12 @@ $blue:    #0d6efd !default;
 $indigo:  #6610f2 !default;
 $purple:  #6f42c1 !default;
 $pink:    #d63384 !default;
-$red:     #dc3545 !default;
-$orange:  #FBC17B !default;
-$yellow:  #ffc107 !default;
-$green:   #198754 !default;
+$red:     rgb(239, 6, 6);
+$orange:  rgb(251, 193, 123);
+$yellow:  rgb(255, 245, 0);
+$green:   rgb(126, 169, 149);
 $teal:    #20c997 !default;
-$cyan:    #0dcaf0 !default;
+$cyan:    rgb(127, 172, 212);
 // scss-docs-end color-variables
 
 // scss-docs-start colors-map
@@ -150,7 +150,7 @@ $yellow-800: shade-color($yellow, 60%) !default;
 $yellow-900: shade-color($yellow, 80%) !default;
 
 $green-100: tint-color($green, 80%) !default;
-$green-200: #BED3C6;
+$green-200: tint-color($green, 60%) !default;
 $green-300: tint-color($green, 40%) !default;
 $green-400: tint-color($green, 20%) !default;
 $green-500: $green !default;
@@ -302,8 +302,8 @@ $cyans: (
 
 // scss-docs-start theme-color-variables
 $primary:       $blue !default;
-$secondary:     $gray-600 !default;
-$success:       $green-200;
+$secondary:     $indigo;
+$success:       $green-300;
 $info:          $cyan !default;
 $warning:       $orange !default;
 $danger:        $red !default;
@@ -1710,8 +1710,8 @@ $btn-close-padding-y:        .5rem !default;
 $btn-close-color:            $black !default;
 $btn-close-bg:               url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='#{$btn-close-color}'><path d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/></svg>") !default;
 $btn-close-focus-shadow:     $focus-ring-box-shadow !default;
-$btn-close-opacity:          .5 !default;
-$btn-close-hover-opacity:    .75 !default;
+$btn-close-opacity:          .75;
+$btn-close-hover-opacity:    .65 !default;
 $btn-close-focus-opacity:    1 !default;
 $btn-close-disabled-opacity: .25 !default;
 $btn-close-white-filter:     invert(1) grayscale(100%) brightness(200%) !default;
