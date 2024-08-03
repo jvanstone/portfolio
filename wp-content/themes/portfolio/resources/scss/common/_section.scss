@@ -1,5 +1,6 @@
 section {
 	padding: 1.5rem 0;
+	overflow: hidden;
 
 	@include media-breakpoint-up(sm) {
 		padding: 2.25rem 0;

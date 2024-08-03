@@ -1,7 +1,9 @@
 .post-type-archive-projects{
 
 	.section--search-projects{ 
-		background-color: rgba($cyan, .75);
+		//background-color: rgba($cyan, .75);
+		background-image: linear-gradient(to bottom, rgba($cyan, .75), rgba($cyan, 0));
+		padding-top: 4rem;
 
 		.project-search {
 			display: flex;
@@ -24,17 +26,17 @@
 				border-radius: 3px;
 				height: 100%;
 				color: #000;
-				width: 80%;
-
-				@include media-breakpoint-up(md) {
-					width: 100%;
-				}
+				width: 100%;
 
 				&::placeholder,
 				&::disabled {
 					font-weight: 400;
 					color: #000;
 				}
+			}
+
+			.reset-container {
+				height: 3.125rem; 
 			}
 		}
 	}
