@@ -1,4 +1,4 @@
-<article class="tease tease-{{post.post_type}} d-flex flex-column align-items-center px-2 py-3" id="tease-{{post.ID}}">
+<article class="tease tease-{{post.post_type}} d-flex flex-column align-items-start px-2 py-3" id="tease-{{post.ID}}">
 	{% block content %}
 	
 		<h2 class="mb-3"><a class="text-dark text-decoration-none">{{post.title}}</a></h2>
@@ -8,6 +8,11 @@
 			</div>
 		{% endif %}
 		<p>{{post.content}}</p>
+
+		{% if post.project_url %}
+			<p class="mb-5"><a class="learn-more" href="{{post.project_url}}" target="_blank">View Website</a></p>
+		{% endif %}
+
 	{% endblock %}
 
 	<ul class="taxonomy-badges">

@@ -7,4 +7,17 @@ footer {
 		font-size: $h5-font-size;
 		font-family: $headings-font-family;
 	}
+
+	.nav-link {
+		color: $white;
+		font-size: .85rem;
+		font-family: $headings-font-family;
+		font-weight: 400;
+		padding: 0;
+
+		&:hover {
+			color: darken($white, 20%);
+			text-decoration: underline;
+		}
+	}
 }

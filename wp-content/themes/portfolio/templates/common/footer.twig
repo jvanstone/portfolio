@@ -1,1 +1,9 @@
-<h2 class="copyright">Copyright {{"now"|date('Y')}} - Jason Vanstone</h2>
+{% set items = footer_quick_links.get_items %}
+
+<div class="row align-items-center">
+<div class="col-8 text-start">
+	<h2 class="copyright mb-0">Copyright {{"now"|date('Y')}} - Jason Vanstone</h2>
+</div>
+<div class="col-4 text-white text-end">
+	{% include "utilities/make-menu.twig" with { items, location: footer } %}</div>
+</div>

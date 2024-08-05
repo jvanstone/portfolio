@@ -1,0 +1,22 @@
+<section id="featured-posts" class="section--featured-posts  wow slideInUp">
+	
+	<div class="container">
+
+		{% if 'projects' != featured_posts[0].post_type %}
+			<h2 class="section-heading section-heading--red mb-4"><span>{{ __('Featured Posts') }}</span></h2>
+		{% endif %}
+
+		<div class='section--featured-posts__slider mx-3 px-1 px-md-3'>
+				
+			{% for post in featured_posts %}
+
+				{% if 'projects' != featured_posts[0].post_type %}
+					{% include "utilities/tease-post.twig" %}
+				{% else %}
+					{% include "utilities/tease-projects.twig" %}
+				{% endif %}
+
+			{% endfor %}
+		</div>
+	</div>
+</section>

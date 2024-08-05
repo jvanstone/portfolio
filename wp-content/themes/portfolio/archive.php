@@ -29,11 +29,11 @@ if ( is_day() ) {
 	$context['title'] = single_tag_title( '', false );
 } elseif ( is_category() ) {
 	$context['title'] = single_cat_title( '', false );
-	array_unshift( $templates, 'archive-' . get_query_var( 'cat' ) . '.twig' );
+	array_unshift( $templates, 'partial/archive-' . get_query_var( 'cat' ) . '.twig' );
 } elseif ( is_post_type_archive() ) {
 	$context['title']             = post_type_archive_title( '', false );
 	$context['archive_post_type'] = get_post_type();
-	array_unshift( $templates, 'archive-' . get_post_type() . '.twig' );
+	array_unshift( $templates, 'partial/archive-' . get_post_type() . '.twig' );
 }
 
 $context['posts'] = new Timber\PostQuery();

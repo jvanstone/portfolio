@@ -163,8 +163,9 @@ class Icarus extends Timber\Site {
 
 		register_nav_menus(
 			array(
-			'primary' => __( 'Primary Menu' ),
-			'secondary' => __( 'Secondary Menu' )
+			'primary'            => __( 'Primary Menu' ),
+			'secondary'          => __( 'Secondary Menu' ),
+			'footer_quick_links' => __( 'Footer (Quick Links)' ),
 			)
 		);
 

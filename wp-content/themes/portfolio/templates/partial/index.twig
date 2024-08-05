@@ -5,11 +5,11 @@
 		<div class="row">
 			{% for post in posts %}
 				<div class="post-wrapper col-12 col-md-4">
-					{% include ['tease-'~post.post_type~'.twig', 'tease.twig'] %}
+					{% include ['utilities/tease-'~post.post_type~'.twig', 'utilities/tease.twig'] %}
 				</div>
 			{% endfor %}
 	
-				{% include 'partial/pagination.twig' with { pagination: posts.pagination({show_all: false, mid_size: 3, end_size: 2}) } %}
+				{% include 'utilities/pagination.twig' with { pagination: posts.pagination({show_all: false, mid_size: 3, end_size: 2}) } %}
 			</div>
 		</div>
 	</div>

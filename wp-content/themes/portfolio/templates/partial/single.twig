@@ -20,7 +20,12 @@
 {% endblock %}
 
 {% block secondary_content %}
-	{% include '/partial/featured-posts.twig' %}
 
-	{% include '/partial/sub-footer-section.twig' %}
+	{% if 'projects' == post.post_type  %}
+		{% set featured_posts = projects %}
+	{% endif %}
+	
+	{% include 'components/featured-posts.twig' %}
+
+	{% include 'common/sub-footer-section.twig' %}
 {% endblock %}

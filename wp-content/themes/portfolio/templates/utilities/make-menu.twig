@@ -1,9 +1,9 @@
-{% if primary %}
-	<ul class="navbar-nav">
+{% if items %}
+	<ul class="{{ 'primary' == location ? 'navbar-nav'  : 'nav d-flex justify-content-end' }}">
 	{% for item in items %}
 		<li class="nav-item {{ item.classes | join(' ') }}">
 			<a class="nav-link" target="{{ item.target }}" href="{{ item.link }}">{{ item.title }}</a>
-			{% include "menu.twig" with {'items': item.children} %}
+			{% include "utilities/make-menu.twig" with {'items': item.children} %}
 		</li>
 	{% endfor %}
 	</ul>

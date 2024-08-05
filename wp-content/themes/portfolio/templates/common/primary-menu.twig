@@ -14,7 +14,8 @@
 				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 			</div>
 			<div class="offcanvas-body">
-				{% include "menu.twig" with {'items': primary.get_items} %}
+				{% set items = primary.get_items %}
+				{% include "utilities/make-menu.twig" with { items, location: 'primary' } %}
 
 {# 				<form class="d-flex mt-3" role="search">
 					<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
