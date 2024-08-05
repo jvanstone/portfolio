@@ -1,51 +1,48 @@
-.section--contact {
+.contact-form {
+	.wpcf7 {
+		form {
 	
-	&__form {
-		.wpcf7 {
-			form {
-		
-				p,
-				label {
-					width: 100%;
-				}
+			p,
+			label {
+				width: 100%;
+			}
 
-				input[type="text"],
-				input[type="email"] {
-					padding: .5rem;
-					width: 100% !important;
+			input[type="text"],
+			input[type="email"] {
+				padding: .5rem;
+				width: 100% !important;
 
-					&::placeholder {
-						color: $gray-600;
-						opacity: .75;
-					}
+				&::placeholder {
+					color: $gray-600;
+					opacity: .75;
 				}
+			}
 
-				textarea {
-					height: 6rem;
-					padding: .5rem;
-					width: 100% !important;
+			textarea {
+				height: 6rem;
+				padding: .5rem;
+				width: 100% !important;
 
-					&::placeholder {
-						color: $gray-600;
-						opacity: .75;
-					}
+				&::placeholder {
+					color: $gray-600;
+					opacity: .75;
 				}
-		
-				.wpcf7-submit {
-					margin: 1rem 0;
-				}
+			}
+	
+			.wpcf7-submit {
+				margin: 1rem 0;
 			}
 		}
 	}
+}
 
-	&__details {
-		background-color: $dark;
-		border-radius: .5rem;
-		color: $white;
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		padding: 2.25rem;
-		width: 100%;
-	}
+.contact-details {
+	background-color: $dark;
+	border-radius: .5rem;
+	color: $white;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	padding: 2.25rem;
+	width: 100%;
 }

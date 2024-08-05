@@ -83,7 +83,7 @@ class Icarus extends Timber\Site {
 	 */
 	public function add_to_context( $context ) {
 		
-		$context['contact_section'] = get_field( 'contact_section' );
+		$context['sub_footer_section'] = get_field( 'sub_footer_section' );
 
 		$context['featured_posts'] = Timber::get_posts([
 			'post_type' => 'post',

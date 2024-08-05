@@ -1,0 +1,13 @@
+.single {
+	.banner {
+
+		@include media-breakpoint-up(md) {
+			clip-path: polygon(0 0, 100% 0, 100% 45vh, 15vw 100%);
+			margin-bottom: 0;
+		}
+	}
+
+	.section--intro {
+		padding-top: 0;
+	}
+}

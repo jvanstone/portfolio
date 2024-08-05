@@ -1,0 +1,18 @@
+.call-to-action {
+	background-image: $gradient, url($image-directory + 'cta-connect.webp');
+	background-size: cover;
+	border-radius: .5rem;
+	color: $white;
+	display: flex;
+	flex-flow: column nowrap;
+	align-items: center;
+	justify-content: center;
+	min-height: 30vh;
+	padding: 2.25rem;
+	height: 100%;
+	width: 100%;
+
+	&__heading {
+		text-shadow: 0 .125rem .15rem rgb(0, 0, 0, .6)
+	}
+}

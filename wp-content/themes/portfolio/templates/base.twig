@@ -13,12 +13,12 @@
 
 <main id="content" role="main">
 
-	{% if 'home' == post.post_name or 'projects' == archive_post_type %}
-		{% set template = post.post_name ? post.post_name : archive_post_type %}
-		{% include "partial/banner.twig" with { template } %}
-	{% endif %}
 
-	<section class="page">
+	{% set template = post.post_name ? post.post_name : archive_post_type %}
+	{% include "partial/banner.twig" with { template } %}
+
+
+	<section class="section section--intro">
 		<div class="container">
 			{% if title and 'projects' != archive_post_type %}
 				<h1>{{title}}</h1>

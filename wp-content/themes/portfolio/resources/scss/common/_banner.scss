@@ -8,10 +8,6 @@
 	box-shadow: 0 1rem 2rem rgba($black, .2);
 
 	@include media-breakpoint-up(md) {
-		margin-bottom: 4rem;
-	}
-
-	@include media-breakpoint-up(lg) {
 		min-height: 55vh;
 		margin-bottom: 5rem;
 	}
@@ -37,7 +33,7 @@
 
 		&:before {
 			content: "";
-			background-image: linear-gradient(to right, rgba($green, .5), rgba($orange, .5));
+			background-image: $gradient;
 			z-index: 2;
 			position: absolute;
 			height: 100%;
@@ -60,8 +56,9 @@
 		}
 	}
 
-	&__h1 {
+	&__heading {
 		margin: 0;
+		text-shadow: .125rem .15rem rgba(255, 255, 255, .6);
 	}
 
 	&--projects {
