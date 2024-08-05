@@ -85,13 +85,33 @@ class Icarus extends Timber\Site {
 		
 		$context['sub_footer_section'] = get_field( 'sub_footer_section' );
 
-		$context['featured_posts'] = Timber::get_posts([
-			'post_type' => 'post',
-		]);
+		$context['featured_posts'] = Timber::get_posts(
+			array(
+				'post_type' => 'post',
+			)
+		);
 
-		$context['projects'] = Timber::get_posts( [
-			'post_type'=> 'projects',
-		] );
+		$context['projects'] = Timber::get_posts(
+			array(
+				'post_type'=> 'projects',
+			)
+		);
+
+		$context['featured_projects'] = Timber::get_posts( 
+			array(
+				'post_type'=> 'projects',
+				'posts_per_page' => 3,
+				'order' => 'DESC',
+			)
+		);
+
+		$context['latest_resume'] = Timber::get_posts(
+			array(
+				'post_type'=> 'resume',
+				'posts_per_page' => 1,
+				'order' => 'DESC',
+			)
+		);
 		
 		// Set all nav menus in context.
 		foreach (array_keys(get_registered_nav_menus()) as $location) {
