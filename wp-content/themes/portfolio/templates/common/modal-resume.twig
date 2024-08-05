@@ -8,8 +8,14 @@
 			</div>
 			<div class="modal-body">
 				{% for resume in latest_resume %}
-					<img class="img-fluid" src="{{ Image( resume.page_1 ) }}" alt="Jason Vanstone's Resume part 1 of 2"/>
-					<img class="img-fluid" src="{{ Image( resume.page_2 ) }}" alt="Jason Vanstone's Resume part 2 of 2"/>
+					{% if resume.page_1  %}
+						<img class="img-fluid" src="{{ Image( resume.page_1 ) }}" alt="Jason Vanstone's Resume part 1 of 2"/>
+					{% endif %}
+					{% if resume.page_2  %}
+						<img class="img-fluid" src="{{ Image( resume.page_2 ) }}" alt="Jason Vanstone's Resume part 2 of 2"/>
+					{% endif %}
+				{% else %}
+					<p>There are no resumes found at this time.</p>
 				{% endfor %}
 			</div>
 			<div class="modal-footer bg-dark">
