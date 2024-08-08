@@ -1,0 +1,15 @@
+.language-menu {
+	.nav {
+		.nav-item {
+			.nav-link {
+				color: rgba($white, 0.75);
+				font-family: $font-family-cursive;
+				font-weight: 400;
+				font-size: 1.25rem;
+				&:hover {
+					color: darken($white, 20%);
+				}
+			}
+		}
+	}
+}

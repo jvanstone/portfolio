@@ -2,7 +2,7 @@
 
 {% block content %}
 
-	<h1 class="text-center"><span class="question-mark">??</span>Sorry, we couldn't find what you're looking for.</h1>
+	<h1 class="text-center"><span class="question-mark">??</span>{{ __('Sorry, we couldn\'t find what you\'re looking for.', 'portfolio') }}</h1>
 
-	<a class="btn btn-warning border-dark rounded-pill pt-2" href="/">Go back to home</a>
+	<a class="btn btn-warning border-dark rounded-pill pt-2" href="{{ translated_link.home }}">{{ __('Go back to home', 'portfolio') }}</a>
 {% endblock %}

@@ -3,7 +3,7 @@
 		<div class="row g-4">
 
 			{% if sub_footer_add_contact_form_to_page %}
-				<h2 class="section-heading section-heading--green mb-4"><span>{{ __('Contact Now') }}</span></h2>
+				<h2 class="section-heading section-heading--green mb-4"><span>{{ __('Contact Now', 'portfolio') }}</span></h2>
 			{% endif %}
 			<div class="col-12 col-lg-8">
 				{% if sub_footer_section.add_contact_form_to_page %}
@@ -12,8 +12,8 @@
 					</div>
 				{% else %}
 					<div class="call-to-action text-center shadow">
-						<h2 class="call-to-action__heading">Let's talk about your next website!</h2>
-						<a href="/portfolio/contact/" class="btn btn btn-success border-white rounded-pill pt-2 mt-4">Connect Now</a>
+						<h2 class="call-to-action__heading">{{ __('Let\'s talk about your next website!', 'portfolio') }}</h2>
+						<a href="{{translated_link.contact}}" class="btn btn btn-success border-white rounded-pill pt-2 mt-4">{{ __('Connect Now', 'portfolio') }}</a>
 					</div>
 				{% endif %}
 			</div>
@@ -25,7 +25,7 @@
 
 					{% include "common/social-icons.twig" %}
 
-					<a class="btn btn-warning border-warning rounded-pill pt-2" href="#" data-bs-toggle="modal" data-bs-target="#viewResume">View Resume</a>
+					<a class="btn btn-warning border-warning rounded-pill pt-2" href="#" data-bs-toggle="modal" data-bs-target="#viewResume">{{ __('View Resume', 'portfolio') }}</a>
 				</div>
 					
 			</div>

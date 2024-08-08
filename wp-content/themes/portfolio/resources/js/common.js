@@ -15,7 +15,7 @@ import './modules/search-projects';
 		 *  Featured Post Slider
 		 * 
 		 */
-		$('.section--featured-posts__slider').slick({
+		$('.featured-posts-slider').slick({
 			arrows: true,
 			dots: true,
 			infinite: true,

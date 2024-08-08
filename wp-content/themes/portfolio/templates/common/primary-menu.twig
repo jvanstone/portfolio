@@ -1,7 +1,12 @@
-<nav  id="nav-main" class="navbar navbar-dark bg-dark" role="navigation">
+<nav id="nav-main" class="navbar navbar-dark bg-dark" role="navigation">
 	<div class="container">
 		<a class="navbar-brand" href="{{site.url}}">{{site.title}}</a>
 
+		<div class="language-menu ms-auto me-3 d-none d-md-block">
+			{% set language_items = language.get_items %}
+			{% include "utilities/make-menu.twig" with { items: language_items, location: 'language' } %}
+		</div>
+		
 		<button class="navbar-toggler primary-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasPrimary" aria-controls="offcanvasPrimary" aria-label="Main Menu">
 			<span></span>
 			<span></span>
@@ -14,8 +19,8 @@
 				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 			</div>
 			<div class="offcanvas-body">
-				{% set items = primary.get_items %}
-				{% include "utilities/make-menu.twig" with { items, location: 'primary' } %}
+				{% set primary_items = primary.get_items %}
+				{% include "utilities/make-menu.twig" with { items: primary_items, location: 'primary' } %}
 
 {# 				<form class="d-flex mt-3" role="search">
 					<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
@@ -25,8 +30,12 @@
 				<hr class="my-5"/>
 
 				{% include "common/social-icons.twig" %}
+
+				<hr class="my-5"/>
+
+				<div class="language-menu">{% include "utilities/make-menu.twig" with { items: language_items, location: 'language' } %}</div>
+
 			</div>
-			
 		</div>
 	</div>
 </nav>

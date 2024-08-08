@@ -26,4 +26,12 @@ $context = Timber::context();
 $timber_post     = new Timber\Post();
 $context['post'] = $timber_post;
 
+$translations = pll_get_post_translations($timber_post->ID);
+
+$post_id = pll_get_post( $timber_post->ID, pll_default_language() );
+
+$tranlsated_post = get_post($post_id);
+
+
+
 Timber::render( array( 'partial/page-' . $timber_post->post_name . '.twig', 'partial/page.twig' ), $context );

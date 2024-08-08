@@ -4,19 +4,19 @@
 			<div class="row gx-0 gy-4 gx-md-4 w-75 mx-auto">
 				<div class="col-12 col-md-6">
 					<div class="project-search__option">
-						<input id="input-keywords" aria-label="Search by keywords" type="text" class="search-input w-input" maxlength="256" name="search" data-name="search" placeholder="Search by keyword" />
+						<input id="input-keywords" aria-label="{{ __( 'Search by keywords' ) }}" type="text" class="search-input w-input" maxlength="256" name="search" data-name="search" placeholder="{{ __( 'Search by keywords' ) }}" />
 					</div>
 				</div>
 				<div class="col-12 col-md-6">
 					<div class="project-search__option">
-						<select id="select-technology" aria-label="Search by technology" name="technology" class="select-technology" data-resource="data-technology">
-							<option value="" disabled="" selected="">Search by technology</option>
-							<option value="">All Technology</option>
+						<select id="select-technology" aria-label="{{ __( 'Search by technology' ) }}" name="technology" class="select-technology" data-resource="data-technology">
+							<option value="" disabled="" selected="">{{ __( 'Search by technology' ) }}</option>
+							<option value="">{{ __( 'All Technology' ) }}</option>
 						</select>
 					</div>
 				</div>
 				<div class="col-12 text-center reset-container">
-					<button type="reset" class="btn btn-info btn-warning btn-reset border-dark rounded-pill" aria-label="Reset">Reset Search</button>
+					<button type="reset" class="btn btn-info btn-warning btn-reset border-dark rounded-pill" aria-label="{{ __( 'Reset Search' ) }}">{{ __( 'Reset Search' ) }}</button>
 				</div>
 			</div>
 
@@ -26,6 +26,6 @@
 </section>
 <div class="container">
 	<div id="no-results" class="border rounded border-danger my-4 p-3 text-center">
-		<p class="fw-bold">Sorry, we couldn't find what you were looking for. Please try again.</p>
+		<p class="fw-bold">{{ __( 'Sorry, we couldn\'t find what you were looking for. Please try again.' ) }}</p>
 	</div>
 </div>
