@@ -1,5 +1,9 @@
 {% if items %}
-	<ul class="{{ 'primary' == location ? 'navbar-nav'  : 'nav d-flex justify-content-end' }}">
+	<ul class="{{
+		'primary' == location ? 'navbar-nav'  :
+		'footer' == location ? 'nav d-flex justify-content-end' :
+		'nav'
+	}}">
 	{% for item in items %}
 		<li class="nav-item {{ item.classes | join(' ') }}">
 			<a class="nav-link" target="{{ item.target }}" href="{{ item.link }}">{{ item.title }}</a>

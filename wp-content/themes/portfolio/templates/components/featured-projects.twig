@@ -1,14 +1,14 @@
 <section id="featured-projects" class="section--featured-projects">
 	<div class="container">
 
-		<h2 class="section-heading section-heading--blue"><span>{{__('Featured Projects')}}</span></h2>
+		<h2 class="section-heading section-heading--blue"><span>{{__( 'Featured Projects', 'portfolio' )}}</span></h2>
 		{% include '/components/accordion-and-media.twig' with {
 			accordion_items: featured_projects,
 			terms: 'technology',
 		} %}
 
 		<div class="mt-5 text-center text-md-start">
-			<a class="btn btn-warning border-dark rounded-pill pt-2" href="/portfolio/projects/">View more Projects</a>
+			<a class="btn btn-warning border-dark rounded-pill pt-2" href="/portfolio/projects/">{{ __( 'View more Projects' )}}</a>
 		</div>
 	</div>
 </section>

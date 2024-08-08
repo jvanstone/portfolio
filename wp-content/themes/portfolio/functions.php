@@ -69,12 +69,11 @@ class Icarus extends Timber\Site {
 	}
 	/** This is where you can register custom post types. */
 	public function register_post_types() {
-
 		include __DIR__ .  '/inc/register-post-types.php';
 	}
 	/** This is where you can register custom taxonomies. */
 	public function register_taxonomies() {
-
+		include __DIR__ .  '/inc/register-custom-taxonomy.php';
 	}
 
 	/** This is where you add some context
@@ -82,6 +81,10 @@ class Icarus extends Timber\Site {
 	 * @param string $context context['this'] Being the Twig's {{ this }}.
 	 */
 	public function add_to_context( $context ) {
+
+		include __DIR__ . '/inc/polylang-helpers.php';
+
+		$context['is_front_page'] = is_front_page();
 		
 		$context['sub_footer_section'] = get_field( 'sub_footer_section' );
 
@@ -111,6 +114,11 @@ class Icarus extends Timber\Site {
 				'posts_per_page' => 1,
 				'order' => 'DESC',
 			)
+		);
+
+		$context['translated_link'] = array(
+			'home' => get_translated_link('home'),
+			'contact' => get_translated_link('contact'),
 		);
 		
 		// Set all nav menus in context.
@@ -186,6 +194,7 @@ class Icarus extends Timber\Site {
 			'primary'            => __( 'Primary Menu' ),
 			'secondary'          => __( 'Secondary Menu' ),
 			'footer_quick_links' => __( 'Footer (Quick Links)' ),
+			'language'           => __( 'Language Menu' ),
 			)
 		);
 
@@ -207,15 +216,6 @@ class Icarus extends Timber\Site {
 			}
 		}
 		add_action( 'wp_default_scripts', 'dequeue_jquery_migrate' );
-	}
-
-	/** This Would return 'foo bar!'.
-	 *
-	 * @param string $text being 'foo', then returned 'foo bar!'.
-	 */
-	public function myfoo( $text ) {
-		$text .= ' bar!';
-		return $text;
 	}
 
 	/** This is where you can add your own functions to twig.

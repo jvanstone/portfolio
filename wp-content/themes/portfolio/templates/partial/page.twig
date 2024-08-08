@@ -2,18 +2,36 @@
 
 {% block content %}
 	
-		<article class="post-type-{{post.post_type}}" id="post-{{post.ID}}">
-			<div class="article-content">
+	<article class="post-type-{{post.post_type}}" id="post-{{post.ID}}">
+		<div class="row align-items-center">
+			{% if is_front_page %}
 
-				<div class="article-body">
+				<div class="col-12 col-lg-6 col-xl-5 order-2 order-lg-1">
+					{% include "components/animated-circles.twig" %}
+				</div>
+				<div class="col-12 col-lg-6 col-xl-7 order-1 order-lg-2">
 					{{post.content}}
 				</div>
-			</div>
-		</article>
+
+			{% else %}
+				
+				{{post.content}}
+			
+			{% endif %}
+		</div>
+	</article>
 
 {% endblock %}
 
 {% block secondary_content %}
+
+	{% if projects and is_front_page %}
+		{% include 'components/featured-projects.twig' %}
+	{% endif %}
+
+	{% if featured_posts and is_front_page %}
+		{% include 'components/featured-posts.twig' %}
+	{% endif %}
 
 	{% include 'common/sub-footer-section.twig' %}
 
