@@ -8,7 +8,7 @@ footer {
 		font-family: $headings-font-family;
 	}
 
-	.nav{
+	.nav {
 		.nav-item {
 
 			&:not(:first-child) {	
@@ -31,6 +31,4 @@ footer {
 			}
 		}
 	}
-
-	
 }

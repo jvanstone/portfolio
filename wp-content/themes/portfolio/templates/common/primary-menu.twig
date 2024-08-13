@@ -13,19 +13,15 @@
 			<span></span>
 		</button>
 
-		<div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="offcanvasPrimary" aria-labelledby="offcanvasPrimaryLabel">
+		<div class="offcanvas offcanvas-end text-bg-dark shadow" tabindex="-1" id="offcanvasPrimary" aria-labelledby="offcanvasPrimaryLabel">
 			<div class="offcanvas-header">
 				<h3 class="offcanvas-title" id="offcanvasPrimaryLabel">{{site.title}}</h3>
 				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 			</div>
 			<div class="offcanvas-body">
 				{% set primary_items = primary.get_items %}
-				{% include "utilities/make-menu.twig" with { items: primary_items, location: 'primary' } %}
 
-{# 				<form class="d-flex mt-3" role="search">
-					<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-					<button class="btn btn-success" type="submit">Search</button>
-				</form> #}
+				{% include "utilities/make-menu.twig" with { items: primary_items, location: 'primary' } %}
 
 				<hr class="my-5"/>
 
@@ -34,7 +30,6 @@
 				<hr class="my-5"/>
 
 				<div class="language-menu">{% include "utilities/make-menu.twig" with { items: language_items, location: 'language' } %}</div>
-
 			</div>
 		</div>
 	</div>

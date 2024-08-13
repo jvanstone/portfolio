@@ -76,7 +76,7 @@
 					}
 	
 					return false;
-				}).hide().x
+				}).hide();
 
 				const $filteredArticles = $articles.filter(':visible');
 
@@ -129,7 +129,6 @@
 			const $button = $(element);
 
 			$button.on('click', () => {
-				console.log('click');
 				resetResults();				
 			});
 		});

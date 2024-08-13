@@ -1,12 +1,14 @@
-<article class="tease tease-{{post.post_type}} d-flex flex-column align-items-center px-2 pb-3" id="tease-{{post.ID}}">
+<article class="tease-{{post.post_type}} col-12 col-md-4 position-relative d-flex flex-column align-items-center rounded px-3 py-4" id="tease-{{post.ID}}">
 	{% block content %}
-	
-		<h2 class="card-title mb-3"><a class="text-dark text-decoration-none">{{post.title}}</a></h2>
-		{% if post.get_thumbnail %}
-			<div class="img-wrapper ratio ratio-16x9">
-				<img src="{{post.thumbnail.src}}"/>
-			</div>
-		{% endif %}
-		<p class="card-text">{{post.preview}}</p>
+
+			<h2 class="card-title mb-3"><a class="text-dark text-decoration-none">{{post.title}}</a></h2>
+			{% if post.get_thumbnail %}
+				<div class="img-wrapper ratio ratio-16x9">
+					<img src="{{post.thumbnail.src}}"/>
+				</div>
+			{% endif %}
+			<p class="card-text">{{post.preview.read_more('')}}</p>
+
+			<p class="mb-5"><a class="learn-more" href="{{post.link}}" target="_blank">{{ __('View More', portfolio) }}</a></p>
 	{% endblock %}
 </article>
