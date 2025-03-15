@@ -1,9 +1,11 @@
 <?php
+
 /**
  * LiteSpeed String Operator Library Class
  *
  * @since 1.3
  */
+
 namespace LiteSpeed;
 
 defined('WPINC') || exit();
@@ -21,7 +23,7 @@ class Str
 	 */
 	public static function rrand($len, $type = 7)
 	{
-		mt_srand((int) ((float) microtime() * 1000000));
+		// mt_srand((int) ((float) microtime() * 1000000));
 
 		switch ($type) {
 			case 0:
@@ -65,5 +67,14 @@ class Str
 		}
 
 		return $str;
+	}
+
+	/**
+	 * Trim double quotes from a string to be used as a preformatted src in HTML.
+	 * @since 6.5.3
+	 */
+	public static function trim_quotes($string)
+	{
+		return str_replace('"', '', $string);
 	}
 }

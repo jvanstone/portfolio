@@ -4,6 +4,7 @@
 RewriteEngine on
 CacheLookup on
 RewriteRule .* - [E=Cache-Control:no-autoflush]
+RewriteRule litespeed/debug/.*\.log$ - [F,L]
 RewriteRule \.litespeed_conf\.dat - [F,L]
 
 ### marker ASYNC start ###
