@@ -7,9 +7,7 @@
  * @since 2.7
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Don't access directly.
-}
+defined( 'ABSPATH' ) || exit;
 
 ?>
 <h2><?php esc_html_e( "You're ready to translate your contents!", 'polylang' ); ?></h2>
@@ -20,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<p class="pll-wizard-actions step documentation-button-container">
 			<a
 				class="button button-primary button-large documentation-button"
-				href="<?php echo esc_url( 'https://polylang.pro/doc-category/getting-started/' ); ?>"
+				href="https://polylang.pro/documentation/support/getting-started/"
 				target="blank"
 			>
 				<?php esc_html_e( 'Read documentation', 'polylang' ); ?>
@@ -40,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 		<div class="pll-wizard-next-step-action">
 			<p class="pll-wizard-actions step">
-				<a class="button button-primary button-large" href="<?php echo esc_url( 'https://polylang.pro/doc/create-menus/' ); ?>">
+				<a class="button button-primary button-large" href="https://polylang.pro/documentation/support/getting-started/create-menus/">
 					<?php esc_html_e( 'Read documentation', 'polylang' ); ?>
 				</a>
 			</p>
@@ -71,7 +69,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 			<div class="pll-wizard-next-step-action">
 				<p class="pll-wizard-actions step">
-					<a class="button button-primary button-large" href="<?php echo esc_url( 'https://polylang.pro/downloads/polylang-pro/' ); ?>">
+					<a class="button button-primary button-large" href="https://polylang.pro/pricing/polylang-pro/">
 						<?php esc_html_e( 'Buy now', 'polylang' ); ?>
 					</a>
 				</p>
@@ -95,7 +93,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 			<div class="pll-wizard-next-step-action">
 				<p class="pll-wizard-actions step">
-					<a class="button button-primary button-large" href="<?php echo esc_url( 'https://polylang.pro/downloads/polylang-for-woocommerce/' ); ?>">
+					<a class="button button-primary button-large" href="https://polylang.pro/pricing/polylang-for-woocommerce/">
 						<?php esc_html_e( 'Buy now', 'polylang' ); ?>
 					</a>
 				</p>

@@ -314,4 +314,18 @@ class Media_Item_Query {
 	private function is_non_media_library_url( $url ): bool {
 		return $this->convert_attachment_url_to_relative( $url ) === $url;
 	}
+
+	/**
+	 * Get the count of optimization errors.
+	 *
+	 * @return int
+	 */
+	public function get_optimization_errors_count() {
+		global $wpdb;
+
+		return (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(DISTINCT post_id) FROM $wpdb->postmeta WHERE meta_key = %s",
+			'wp-smush-optimization-errors'
+		) );
+	}
 }

@@ -27,7 +27,7 @@ class CF7_AntiSpam_Frontend {
 	 * @access   private
 	 * @var      string $plugin_name The ID of this plugin.
 	 */
-	private $plugin_name;
+	private string $plugin_name;
 
 	/**
 	 * The version of this plugin.
@@ -36,7 +36,7 @@ class CF7_AntiSpam_Frontend {
 	 * @access   private
 	 * @var      string $version The current version of this plugin.
 	 */
-	private $version;
+	private string $version;
 
 	/**
 	 * The options of this plugin.
@@ -45,7 +45,7 @@ class CF7_AntiSpam_Frontend {
 	 * @access   public
 	 * @var      array    $options    options of this plugin.
 	 */
-	private $options;
+	private array $options;
 
 	/**
 	 * It adds a filter to the wpcf7_form_hidden_fields hook, which is called by the Contact Form 7 plugin
@@ -59,6 +59,88 @@ class CF7_AntiSpam_Frontend {
 
 		/* the plugin options */
 		$this->options = CF7_AntiSpam::get_options();
+	}
+
+	/**
+	 * Checks if the contact form 7 shortcode exists in the current post
+	 *
+	 * @return bool
+	 */
+	private function cf7_shortcode_exists() {
+		global $post;
+		return is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'contact-form-7' );
+		// Register the contact form antispam scripts
+	}
+
+
+	/**
+	 * Handles loading scripts
+	 *
+	 * @return void
+	 */
+	public function load_scripts() {
+		// Register the contact form antispam scripts
+		add_action('wp_enqueue_scripts', array($this, 'register_scripts'));
+
+		// Select the hook to use based on the User's choice
+		$hook = !empty($this->options['optimize_scripts_loading']) ? 'wpcf7_enqueue_scripts' : 'wp_enqueue_scripts';
+
+		// enqueue CF7 antispam scripts only if contact form 7 wpcf7_enqueue_scripts is called
+		add_action( $hook, array( $this, 'enqueue_scripts' ));
+	}
+
+	public function setup() {
+		/* It adds hidden fields to the form */
+		add_filter( 'wpcf7_form_hidden_fields', array( $this, 'cf7a_add_hidden_fields' ), 1 );
+		add_filter( 'wpcf7_config_validator_available_error_codes', array( $this, 'cf7a_remove_cf7_error_message' ), 10, 2 );
+
+
+		/* It adds a hidden field to the form with a unique value that is encrypted with a cipher */
+		if ( isset( $this->options['check_bot_fingerprint'] ) && intval( $this->options['check_bot_fingerprint'] ) === 1 ) {
+			add_filter( 'wpcf7_form_hidden_fields', array( $this, 'cf7a_add_bot_fingerprinting' ), 100 );
+		}
+
+		/* It adds a new field to the form, which is a hidden field that will be populated with the bot fingerprinting extras */
+		if ( isset( $this->options['check_bot_fingerprint_extras'] ) && intval( $this->options['check_bot_fingerprint_extras'] ) === 1 ) {
+			add_filter( 'wpcf7_form_hidden_fields', array( $this, 'cf7a_add_bot_fingerprinting_extras' ), 100 );
+		}
+
+		/* It adds a new field to the form, called `cf7a_append_on_submit`, and sets it to false */
+		if ( isset( $this->options['append_on_submit'] ) && intval( $this->options['append_on_submit'] ) === 1 ) {
+			add_filter( 'wpcf7_form_hidden_fields', array( $this, 'cf7a_append_on_submit' ), 100 );
+		}
+
+		/* It takes the form elements, clones the text inputs, adds a class to the cloned inputs, and adds the cloned inputs to the form */
+		if ( isset( $this->options['check_honeypot'] ) && intval( $this->options['check_honeypot'] ) === 1 ) {
+			add_filter( 'wpcf7_form_elements', array( $this, 'cf7a_honeypot_add' ) );
+		}
+
+		/* It gets the form, formats it, and then echoes it out */
+		if ( isset( $this->options['check_honeyform'] ) && intval( $this->options['check_honeyform'] ) === 1 ) {
+			add_filter( 'the_content', array( $this, 'cf7a_honeyform' ), 99 );
+		}
+
+		/* Checking if the user has selected the option to protect the user's identity. If they have, it will call the function to protect the user's identity. */
+		if ( isset( $this->options['identity_protection_user'] ) && intval( $this->options['identity_protection_user'] ) === 1 ) {
+			$this->cf7a_protect_user();
+		}
+
+		/* It removes the WordPress version from the header, removes the REST API link from the header, removes headers that dispose information */
+		if ( isset( $this->options['identity_protection_wp'] ) && intval( $this->options['identity_protection_wp'] ) === 1 ) {
+			add_filter( 'wp_headers', array( $this, 'cf7a_protect_wp' ), 999 );
+		}
+
+		/* Will check if the form has been submitted more than once, blocking all emails that were sent after the first one for a period of 5 seconds */
+		if ( isset( $this->options['mailbox_protection_multiple_send'] ) && intval( $this->options['mailbox_protection_multiple_send'] ) === 1 ) {
+			add_action( 'wpcf7_before_send_mail', array( $this, 'cf7a_check_resend' ), 9, 3 );
+		}
+
+		/* It adds a CSS style to the page that hides the honeypot field */
+		if (
+			( isset( $this->options['check_honeypot'] ) && 1 === intval( $this->options['check_honeypot'] ) ) || ( isset( $this->options['check_honeyform'] ) && 1 === intval( $this->options['check_honeyform'] ) )
+		) {
+			add_action( 'wp_footer', array( $this, 'cf7a_add_honeypot_css' ), 11 );
+		}
 	}
 
 	/**
@@ -89,7 +171,7 @@ class CF7_AntiSpam_Frontend {
 	public function cf7a_honeypot_add( $form_elements ) {
 		/* A list of default names for the honeypot fields. */
 		$options     = get_option( 'cf7a_options', array() );
-		$input_names = ! empty( $options['honeypot_input_names'] ) ? get_honeypot_input_names( $options['honeypot_input_names'] ) : array();
+		$input_names = ! empty( $options['honeypot_input_names'] ) ? cf7a_get_honeypot_input_names( $options['honeypot_input_names'] ) : array();
 		$input_class = ! empty( $this->options['cf7a_customizations_class'] ) ? sanitize_html_class( $this->options['cf7a_customizations_class'] ) : 'cf7a';
 		/**
 		 * Controls the maximum number of honeypots.
@@ -176,7 +258,7 @@ class CF7_AntiSpam_Frontend {
 			$wpcf7 = WPCF7_ContactForm::get_template();
 
 			static $global_count = 0;
-			++ $global_count;
+			++$global_count;
 
 			$unit_tag = sprintf(
 				'wpcf7-f%1$d-p%2$d-o%3$d',
@@ -288,6 +370,11 @@ class CF7_AntiSpam_Frontend {
 	 * It adds hidden fields to the form
 	 *
 	 * @param array $fields the array of hidden fields that will be added to the form.
+	 * @return array the array of hidden fields that will be added to the form.
+	 *               the returned fields are: version, address, referer, protocol
+	 *               the optional fields are: language, timestamp, hash
+	 *               the optional fields are added based on the options set in the plugin
+	 *               the fields are encrypted with the cipher set in the plugin
 	 */
 	public function cf7a_add_hidden_fields( $fields ) {
 
@@ -320,8 +407,8 @@ class CF7_AntiSpam_Frontend {
 			array(
 				$prefix . 'version'  => '1.0',
 				$prefix . 'address'  => cf7a_crypt( cf7a_get_real_ip(), $this->options['cf7a_cipher'] ),
-				$prefix . 'referer'  => cf7a_crypt( $referrer ? $referrer : 'no referer', $this->options['cf7a_cipher'] ),
-				$prefix . 'protocol' => cf7a_crypt( $protocol ? $protocol : 'protocol missing', $this->options['cf7a_cipher'] ),
+				$prefix . 'referer'  => cf7a_crypt( $referrer ? $referrer : '', $this->options['cf7a_cipher'] ),
+				$prefix . 'protocol' => cf7a_crypt( $protocol ? $protocol : '', $this->options['cf7a_cipher'] ),
 			)
 		);
 	}
@@ -395,7 +482,7 @@ class CF7_AntiSpam_Frontend {
 		if ( ! is_user_logged_in() ) {
 			add_filter(
 				'rest_endpoints',
-				function( $endpoints ) {
+				function ( $endpoints ) {
 					if ( isset( $endpoints['/wp/v2/users'] ) ) {
 						unset( $endpoints['/wp/v2/users'] );
 					}
@@ -449,8 +536,7 @@ class CF7_AntiSpam_Frontend {
 	 *
 	 * @since    0.1.0
 	 */
-	public function enqueue_scripts() {
-
+	public function register_scripts() {
 		/**
 		 *
 		 * An instance of this class should be passed to the run() function
@@ -464,7 +550,6 @@ class CF7_AntiSpam_Frontend {
 
 		$asset = include CF7ANTISPAM_PLUGIN_DIR . '/build/script.asset.php';
 		wp_register_script( $this->plugin_name, CF7ANTISPAM_PLUGIN_URL . '/build/script.js', $asset['dependencies'], $asset['version'], true );
-		wp_enqueue_script( $this->plugin_name );
 
 		wp_localize_script(
 			$this->plugin_name,
@@ -477,7 +562,14 @@ class CF7_AntiSpam_Frontend {
 		);
 	}
 
-	// Prevent the email sending step for specific form
+	/**
+	 * Register the JavaScript for the admin area.
+	 *
+	 * @since    0.1.0
+	 */
+	public function enqueue_scripts() {
+		wp_enqueue_script( $this->plugin_name );
+	}
 
 	/**
 	 * Check if the form should be aborted if mail was sent or invalid
@@ -491,7 +583,7 @@ class CF7_AntiSpam_Frontend {
 	public function cf7a_check_resend( $cf7, &$abort, $submission ) {
 
 		// Get the hash from the form data if it exists
-		$raw_hash = ! empty( $_POST['_cf7a_hash'] ) ? sanitize_text_field( $_POST['_cf7a_hash'] ) : false;
+		$raw_hash = ! empty( $_POST['_cf7a_hash'] ) ? sanitize_text_field( wp_unslash($_POST['_cf7a_hash'] ) ) : false; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( ! $raw_hash ) {
 			return;
 		}
@@ -514,7 +606,13 @@ class CF7_AntiSpam_Frontend {
 		} elseif ( get_transient( "mail_sent_$hash" ) ) {
 			// Set the status
 			$submission->set_status( 'mail_sent_multiple' );
-			$submission->set_response( esc_html__( "Slow down, please wait $expire seconds before resending.", 'cf7-antispam' ) );
+			$submission->set_response(
+				sprintf(
+					/* translators: % is the number of seconds to wait */
+					esc_html__( 'Slow down, please wait %s seconds before resending.', 'cf7-antispam' ),
+					$expire
+				)
+			);
 		} else {
 			delete_transient( "mail_sent_$hash" );
 			set_transient( "mail_sent_$hash", true, $expire );

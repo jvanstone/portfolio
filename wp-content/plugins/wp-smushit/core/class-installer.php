@@ -55,7 +55,7 @@ class Installer {
 		}
 
 		$version = get_site_option( 'wp-smush-version' );
-		self::maybe_mark_as_pre_3_12_6_site( $version );
+		self::maybe_mark_as_pre_3_22_site( $version );
 
 		// Cache activated date time.
 		$event_name = ! empty( $version ) ? 'plugin_activated' : 'plugin_installed';
@@ -66,7 +66,6 @@ class Installer {
 		}
 
 		Settings::get_instance()->initial_default_site_settings();
-		$settings = Settings::get_instance()->get();
 
 		// If the version is not saved or if the version is not same as the current version,.
 		if ( ! $version || WP_SMUSH_VERSION !== $version ) {
@@ -79,7 +78,7 @@ class Installer {
 				)
 			); // db call ok; no-cache ok.
 
-			if ( $results || ( isset( $settings['auto'] ) && false !== $settings['auto'] ) ) {
+			if ( $results || $version ) {
 				update_site_option( 'wp-smush-install-type', 'existing' );
 			}
 
@@ -102,12 +101,16 @@ class Installer {
 			return;
 		}
 
+		if ( ! class_exists( '\\Smush\\Core\\Settings' ) ) {
+			require_once __DIR__ . '/class-settings.php';
+		}
+
 		$version = get_site_option( 'wp-smush-version' );
 
 		if ( false === $version ) {
 			self::smush_activated();
 		} else {
-			self::maybe_mark_as_pre_3_12_6_site( $version );
+			self::maybe_mark_as_pre_3_22_site( $version );
 		}
 
 		if ( false !== $version && WP_SMUSH_VERSION !== $version ) {
@@ -149,13 +152,24 @@ class Installer {
 			}
 
 			if ( version_compare( $version, '3.16.0', '<' ) ) {
+				self::regenerate_preset_configs_before_3_16_0();
+			} elseif ( version_compare( $version, '3.21.0', '<' ) ) {
 				self::regenerate_preset_configs();
 			}
 
-			$hide_new_feature_highlight_modal = apply_filters( 'wpmudev_branding_hide_doc_link', false );
-			if ( ! $hide_new_feature_highlight_modal && version_compare( $version, '3.16.0', '<' ) ) {
-				// Add the flag to display the new feature background process modal.
-				add_site_option( 'wp-smush-show_upgrade_modal', true );
+			if ( version_compare( $version, '3.21.0', '<' ) ) {
+				self::upgrade_3_21_0();
+			}
+
+			if ( version_compare( $version, '3.21.0', '<' ) ) {
+				$hide_new_feature_highlight_modal = apply_filters( 'wpmudev_branding_hide_doc_link', false );
+				if ( ! $hide_new_feature_highlight_modal ) {
+					// Add the flag to display the new feature background process modal.
+					add_site_option( 'wp-smush-show_upgrade_modal', true );
+				}
+
+				// Show new feature hotspot.
+				self::set_new_feature_hotspot_flag();
 			}
 
 			// Create/upgrade directory smush table.
@@ -264,7 +278,6 @@ class Installer {
 	 *
 	 * @return void
 	 * @since 3.10.0
-	 *
 	 */
 	private static function upgrade_3_10_0() {
 		// Remove unused options.
@@ -293,7 +306,6 @@ class Installer {
 	 *
 	 * @return void
 	 * @since 3.10.3
-	 *
 	 */
 	private static function upgrade_3_10_3() {
 		delete_site_option( 'wp-smush-hide_smush_welcome' );
@@ -306,17 +318,17 @@ class Installer {
 		}
 	}
 
-	private static function maybe_mark_as_pre_3_12_6_site( $version ) {
-		if ( ! $version || version_compare( $version, '3.12.0', '<' ) || false !== get_site_option( 'wp_smush_pre_3_12_6_site' ) ) {
+	private static function maybe_mark_as_pre_3_22_site( $version ) {
+		if ( ! $version || false !== get_site_option( 'wp_smush_pre_3_22_site' ) ) {
 			return;
 		}
-		if ( version_compare( $version, '3.12.5', '>' ) ) {
+		if ( version_compare( $version, '3.21.1', '>' ) ) {
 			$version = 0;
 		}
-		update_site_option( 'wp_smush_pre_3_12_6_site', $version );
+		update_site_option( 'wp_smush_pre_3_22_site', $version );
 	}
 
-	private static function regenerate_preset_configs() {
+	private static function regenerate_preset_configs_before_3_16_0() {
 		// Update Smush mode for display on Configs page.
 		$stored_configs = get_site_option( 'wp-smush-preset_configs', array() );
 		if ( empty( $stored_configs ) || ! is_array( $stored_configs ) ) {
@@ -339,6 +351,52 @@ class Installer {
 		update_site_option( 'wp-smush-preset_configs', $stored_configs );
 	}
 
+	private static function regenerate_preset_configs() {
+		// Regenerate preset configs to update Next-Gen Formats.
+		$stored_configs = get_site_option( 'wp-smush-preset_configs', array() );
+		if ( empty( $stored_configs ) || ! is_array( $stored_configs ) ) {
+			return;
+		}
+
+		$configs_handler = new Configs();
+		foreach ( $stored_configs as $key => $preset_config ) {
+			if ( empty( $preset_config['config']['configs'] ) ) {
+				continue;
+			}
+
+			$preset_config ['config'] = $configs_handler->sanitize_and_format_configs( $preset_config['config']['configs'] );
+			$stored_configs[ $key ]   = $preset_config;
+		}
+
+		update_site_option( 'wp-smush-preset_configs', $stored_configs );
+	}
+
+	private static function upgrade_3_21_0() {
+		self::migrate_auto_resize_to_new_settings();
+		self::migrate_auto_resize_to_new_settings_for_sub_sites();
+	}
+
+	private static function migrate_auto_resize_to_new_settings_for_sub_sites() {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		self::for_each_public_site( function() {
+			self::migrate_auto_resize_to_new_settings();
+		} );
+	}
+
+	private static function migrate_auto_resize_to_new_settings() {
+		$settings                = Settings::get_instance();
+		$is_auto_resizing_active = $settings->get( 'auto_resize' );
+		if ( ! $is_auto_resizing_active ) {
+			return;
+		}
+		$settings->set( 'auto_resizing', $is_auto_resizing_active );
+		$settings->set( 'cdn_dynamic_sizes', $is_auto_resizing_active );
+		$settings->delete( 'auto_resize' );
+	}
+
 	private static function cache_event_time( $event ) {
 		$option_key            = 'wp_smush_event_times';
 		$event_times           = get_site_option( $option_key, array() );
@@ -352,4 +410,43 @@ class Installer {
 	private static function reset_smusher_error_counts() {
 		( new Smusher() )->reset_error_counts();
 	}
+
+	private static function set_new_feature_hotspot_flag() {
+		add_option( 'wp-smush-show-new-feature-hotspot', true );
+		self::set_new_feature_hotspot_flag_for_sub_sites();
+	}
+
+	private static function set_new_feature_hotspot_flag_for_sub_sites() {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		self::for_each_public_site( function() {
+			add_option( 'wp-smush-show-new-feature-hotspot', true );
+		} );
+	}
+
+	private static function for_each_public_site( callable $callback ) {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		$site_args = array(
+			'fields' => 'ids',
+			'public' => 1,
+			'number' => 250, // Limit to 250 sites to avoid performance issues.
+		);
+
+		$site_ids = get_sites( $site_args );
+		if ( empty( $site_ids ) ) {
+			return;
+		}
+
+		foreach ( $site_ids as $site_id ) {
+			switch_to_blog( $site_id );
+			call_user_func( $callback );
+			restore_current_blog();
+		}
+	}
 }
+

@@ -1,0 +1,80 @@
+{
+	"name": "cf7-antispam",
+	"author": "Erik Golinelli <erik@codekraft.it>",
+	"license": "GPL-2.0-only",
+	"version": "0.7.2",
+	"description": "AntiSpam for Contact Form 7",
+	"files": [
+		"admin/*",
+		"assets/icon.svg",
+		"build/*",
+		"core/*",
+		"engine/*",
+		"includes/*",
+		"vendor/*",
+		"languages/cf7-antispam.pot",
+		"languages/readme.txt",
+		"cf7-antispam.php",
+		"composer.json",
+		"LICENSE",
+		"readme.txt"
+	],
+	"scripts": {
+		"start": "wp-scripts start",
+		"build": "wp-scripts build",
+		"preplugin-zip": "npm run build && npm run makepot",
+		"plugin-zip": "wp-scripts plugin-zip",
+		"--postplugin-zip": "composer install",
+		"lint:css": "wp-scripts lint-style ./src/**/*.scss --fix",
+		"lint:js": "wp-scripts lint-js ./src/**/*.ts --fix",
+		"packages-update": "wp-scripts packages-update",
+		"wp-env:start": "wp-env start",
+		"wp-env:xdebug": "wp-env start --xdebug",
+		"wp-env:stop": "wp-env stop",
+		"wp-env:destroy": "wp-env destroy",
+		"test:e2e": "wp-scripts test-playwright",
+		"test:e2e:watch": "npm run test:playwright --watch",
+		"postinstall": "husky install",
+		"makepot": "npx make-pot",
+		"PHPCS": "wp-env run cli composer --env-cwd=wp-content/plugins/cf7-antispam PHPCS",
+		"composer:install": "wp-env run cli composer --env-cwd=wp-content/plugins/cf7-antispam install",
+		"composer:build": "wp-env run cli composer --env-cwd=wp-content/plugins/cf7-antispam build",
+		"test:unit:php": "wp-env run tests-wordpress /var/www/html/wp-content/plugins/cf7-antispam/vendor/bin/phpunit -c /var/www/html/wp-content/plugins/cf7-antispam/phpunit.xml.dist --verbose"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/erikyo/contact-form-7-antispam.git"
+	},
+	"bugs": {
+		"url": "https://github.com/erikyo/contact-form-7-antispam/issues"
+	},
+	"homepage": "https://github.com/erikyo/contact-form-7-antispam#readme",
+	"devDependencies": {
+		"@wordpress/e2e-test-utils-playwright": "^1.34.0",
+		"@wordpress/env": "10.26.0",
+		"@wordpress/eslint-plugin": "^22.20.0",
+		"@wordpress/scripts": "^30.27.0",
+		"@wp-blocks/make-pot": "^1.6.3",
+		"chart.js": "^4.5.1",
+		"husky": "^9.1.7",
+		"prettier": "^3.6.2",
+		"@wordpress/api-fetch": "^7.34.0",
+		"typescript": "^5.9.3"
+	},
+	"engines": {
+		"node": ">=16.0.0",
+		"npm": ">=6.9.0"
+	},
+	"browserslist": [
+		"extends @wordpress/browserslist-config",
+		"Safari > 8",
+		"IE > 10"
+	],
+	"stylelint": {
+		"extends": [
+			"@wordpress/stylelint-config",
+			"@wordpress/stylelint-config/scss"
+		]
+	},
+	"prettier": "@wordpress/prettier-config"
+}

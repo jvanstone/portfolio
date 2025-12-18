@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Charts' => $baseDir . '/admin/CF7_AntiSpam_Admin_Charts.php',
     'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Core' => $baseDir . '/admin/CF7_AntiSpam_Admin_Core.php',
     'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Customizations' => $baseDir . '/admin/CF7_AntiSpam_Admin_Customizations.php',
     'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Display' => $baseDir . '/admin/CF7_AntiSpam_Admin_Display.php',
@@ -16,7 +17,9 @@ return array(
     'CF7_AntiSpam\\Core\\CF7_AntiSpam_Flamingo' => $baseDir . '/core/CF7_AntiSpam_Flamingo.php',
     'CF7_AntiSpam\\Core\\CF7_AntiSpam_Frontend' => $baseDir . '/core/CF7_AntiSpam_Frontend.php',
     'CF7_AntiSpam\\Core\\CF7_AntiSpam_Loader' => $baseDir . '/core/CF7_AntiSpam_Loader.php',
+    'CF7_AntiSpam\\Core\\CF7_AntiSpam_Rest_Api' => $baseDir . '/core/CF7_AntiSpam_Rest_Api.php',
     'CF7_AntiSpam\\Core\\CF7_AntiSpam_i18n' => $baseDir . '/core/CF7_AntiSpam_i18n.php',
+    'CF7_AntiSpam\\Core\\CF7_Antispam_Blacklist' => $baseDir . '/core/CF7_Antispam_Blacklist.php',
     'CF7_AntiSpam\\Core\\CF7_Antispam_Geoip' => $baseDir . '/core/CF7_Antispam_Geoip.php',
     'CF7_AntiSpam\\Core\\CF7_Antispam_Service' => $baseDir . '/core/CF7_Antispam_Service.php',
     'CF7_AntiSpam\\Engine\\CF7_AntiSpam_Activator' => $baseDir . '/engine/CF7_AntiSpam_Activator.php',

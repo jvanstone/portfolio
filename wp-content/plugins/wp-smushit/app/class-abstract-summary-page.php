@@ -27,7 +27,7 @@ abstract class Abstract_Summary_Page extends Abstract_Page {
 	 * Function triggered when the page is loaded before render any content.
 	 */
 	public function on_load() {
-		add_action( 'stats_ui_after_resize_savings', array( $this, 'conversion_savings_stats' ), 15 );
+		add_action( 'stats_ui_after_resize_savings', array( $this, 'add_preload_images_status' ), 15 );
 		add_action( 'stats_ui_after_resize_savings', array( $this, 'add_lossy_level' ), 25 );
 		add_action( 'stats_ui_after_resize_savings', array( $this, 'cdn_stats_ui' ), 20 );
 		if ( Abstract_Page::should_render( 'directory' ) ) {
@@ -104,34 +104,37 @@ abstract class Abstract_Summary_Page extends Abstract_Page {
 		);
 	}
 
-	/**
-	 * Show conversion savings stats in stats section.
-	 *
-	 * Show Png to Jpg conversion savings in stats box if the
-	 * settings enabled or savings found.
-	 *
-	 * @return void
-	 */
-	public function conversion_savings_stats() {
-		if ( ! WP_Smush::is_pro() ) {
-			return;
-		}
-
-		$core                     = WP_Smush::get_instance()->core();
-		$global_stats             = $core->get_global_stats();
-		$class_names              = array( 'smush-conversion-savings' );
-		$savings_conversion_human = ! empty( $global_stats['savings_conversion_human'] ) ? $global_stats['savings_conversion_human'] : '0 B';
-		if ( empty( $global_stats['savings_conversion'] ) ) {
-			$class_names[] = 'sui-hidden';
-		}
-
+	public function add_preload_images_status() {
+		$is_preload_images_active = $this->settings->is_lcp_preload_enabled();
+		$utm_link                 = $this->get_utm_link(
+			array(
+				'utm_campaign' => 'smush_preload-critical-images_summary',
+			)
+		);
 		?>
-		<li class="<?php echo esc_attr( join( ' ', $class_names ) ); ?>">
+		<li class="smush-preload-images-status">
 			<span class="sui-list-label">
-				<?php esc_html_e( 'PNG to JPEG savings', 'wp-smushit' ); ?>
+				<?php esc_html_e( 'Preload Critical Images', 'wp-smushit' ); ?>
 			</span>
-			<span class="sui-list-detail wp-smush-stats">
-				<?php echo esc_html( $savings_conversion_human ); ?>
+			<span class="sui-list-detail">
+				<?php if ( ! WP_Smush::is_pro() ) : ?>
+					<a href="<?php echo esc_url( $utm_link ); ?>" target="_blank" class="smush-upgrade-text">
+						<?php esc_html_e( 'Upgrade', 'wp-smushit' ); ?>
+					</a>
+					<span class="sui-tooltip sui-tooltip-constrained sui-tooltip-top-right" style="--tooltip-width: 360px;" data-tooltip="<?php esc_attr_e( "Preload helps to improve the Largest Contentful Paint (LCP) metric by optimizing images that often form the main viewport content. Since LCP measures the rendering time of the largest visible element, Smush helps to achieve Google's recommended 2.5-second benchmark for good user experience.", 'wp-smushit' ); ?>">
+						<span class="sui-tag sui-tag-sm sui-tag-purple"><?php esc_html_e( 'Pro', 'wp-smushit' ); ?></span>
+					</span>
+				<?php elseif ( $is_preload_images_active ): ?>
+					<span class="wp-smush-preload-images-status sui-tag sui-tag-green">
+						<?php esc_html_e( 'Active', 'wp-smushit' ); ?>
+					</span>
+				<?php else: ?>
+					<a href="<?php echo esc_url( $this->get_url( 'smush-lazy-preload&view=preload' ) ); ?>">
+						<span class="wp-smush-preload-images-status sui-tag" style="cursor: pointer;">
+							<?php esc_html_e( 'Inactive', 'wp-smushit' ); ?>
+						</span>
+					</a>
+				<?php endif; ?>
 			</span>
 		</li>
 		<?php
@@ -147,18 +150,22 @@ abstract class Abstract_Summary_Page extends Abstract_Page {
 		if ( 'disabled' === $status ) {
 			return;
 		}
+		$overcap_message    = __( "You've gone through your CDN bandwidth limit, so we’ve stopped serving your images via the CDN. Contact your administrator to upgrade your Smush CDN plan to reactivate this service", 'wp-smushit' );
+		$upgrade_message    = __( "You're almost through your CDN bandwidth limit. Please contact your administrator to upgrade your Smush CDN plan to ensure you don't lose this service", 'wp-smushit' );
+		$activating_message = __( 'Your media is currently being served from the WPMU DEV CDN. Bulk and Directory smush features are treated separately and will continue to run independently.', 'wp-smushit' );
+
 		?>
 		<li class="smush-cdn-stats">
 			<span class="sui-list-label"><?php esc_html_e( 'CDN', 'wp-smushit' ); ?></span>
 			<span class="wp-smush-stats sui-list-detail">
 				<i class="sui-icon-loader sui-loading sui-hidden" aria-hidden="true" title="<?php esc_attr_e( 'Updating Stats', 'wp-smushit' ); ?>"></i>
 				<?php if ( 'overcap' === $status ) : ?>
-					<span class="sui-tooltip sui-tooltip-top-right sui-tooltip-constrained" data-tooltip="<?php esc_attr_e( "You've gone through your CDN bandwidth limit, so we’ve stopped serving your images via the CDN. Contact your administrator to upgrade your Smush CDN plan to reactivate this service", 'wp-smushit' ); ?>">
+					<span class="sui-tooltip sui-tooltip-top-right sui-tooltip-constrained" data-tooltip="<?php echo esc_attr( $this->whitelabel->whitelabel_string( $overcap_message ) ); ?>">
 						<i class="sui-icon-warning-alert sui-error sui-md" aria-hidden="true"></i>
 					</span>
 					<span><?php esc_html_e( 'Overcap', 'wp-smushit' ); ?></span>
 				<?php elseif ( 'upgrade' === $status ) : ?>
-					<span class="sui-tooltip sui-tooltip-top-right sui-tooltip-constrained" data-tooltip="<?php esc_attr_e( "You're almost through your CDN bandwidth limit. Please contact your administrator to upgrade your Smush CDN plan to ensure you don't lose this service", 'wp-smushit' ); ?>">
+					<span class="sui-tooltip sui-tooltip-top-right sui-tooltip-constrained" data-tooltip="<?php echo esc_attr( $this->whitelabel->whitelabel_string( $upgrade_message ) ); ?>">
 						<i class="sui-icon-warning-alert sui-warning sui-md" aria-hidden="true"></i>
 					</span>
 					<span><?php esc_html_e( 'Needs upgrade', 'wp-smushit' ); ?></span>
@@ -166,7 +173,7 @@ abstract class Abstract_Summary_Page extends Abstract_Page {
 					<i class="sui-icon-check-tick sui-info sui-md" aria-hidden="true"></i>
 					<span><?php esc_html_e( 'Activating', 'wp-smushit' ); ?></span>
 				<?php else : ?>
-					<span class="sui-tooltip sui-tooltip-top-right sui-tooltip-constrained" data-tooltip="<?php esc_attr_e( 'Your media is currently being served from the WPMU DEV CDN. Bulk and Directory smush features are treated separately and will continue to run independently.', 'wp-smushit' ); ?>">
+					<span class="sui-tooltip sui-tooltip-top-right sui-tooltip-constrained" data-tooltip="<?php echo esc_attr( $this->whitelabel->whitelabel_string( $activating_message ) ); ?>">
 						<i class="sui-icon-check-tick sui-success sui-md" aria-hidden="true"></i>
 					</span>
 					<span><?php esc_html_e( 'Active', 'wp-smushit' ); ?></span>
@@ -193,8 +200,8 @@ abstract class Abstract_Summary_Page extends Abstract_Page {
 				<?php if ( $human <= 0 ) { ?>
 					<p class="wp-smush-stats-label-message sui-hidden-sm sui-hidden-md sui-hidden-lg">
 						<?php esc_html_e( "Smush images that aren't located in your uploads folder.", 'wp-smushit' ); ?>
-						<a href="<?php echo esc_url( $this->get_url( 'smush-directory' ) ); ?>" class="wp-smush-dir-link"
-							id="<?php echo 'smush-directory' === $this->get_slug() ? 'smush-directory-open-modal' : ''; ?>"
+						<a href="<?php echo esc_url( $this->get_url( 'smush-bulk#directory_smush-settings-row' ) ); ?>" class="wp-smush-dir-link"
+							id="<?php echo 'smush-bulk' === $this->get_slug() ? 'smush-directory-open-modal' : ''; ?>"
 							title="<?php esc_attr_e( "Select a directory you'd like to Smush.", 'wp-smushit' ); ?>">
 							<?php esc_html_e( 'Choose directory', 'wp-smushit' ); ?>
 						</a>
@@ -206,8 +213,8 @@ abstract class Abstract_Summary_Page extends Abstract_Page {
 				<span class="wp-smush-stats-human"></span>
 				<span class="wp-smush-stats-sep sui-hidden">/</span>
 				<span class="wp-smush-stats-percent"></span>
-				<a href="<?php echo esc_url( $this->get_url( 'smush-directory' ) ); ?>" class="wp-smush-dir-link sui-hidden-xs sui-hidden"
-					id="<?php echo 'smush-directory' === $this->get_slug() ? 'smush-directory-open-modal' : ''; ?>"
+				<a href="<?php echo esc_url( $this->get_url( 'smush-bulk#directory_smush-settings-row' ) ); ?>" class="wp-smush-dir-link sui-hidden-xs sui-hidden"
+					id="<?php echo 'smush-bulk' === $this->get_slug() ? 'smush-directory-open-modal' : ''; ?>"
 					title="<?php esc_attr_e( "Select a directory you'd like to Smush.", 'wp-smushit' ); ?>">
 					<?php esc_html_e( 'Choose directory', 'wp-smushit' ); ?>
 				</a>

@@ -45,10 +45,11 @@ class CF7_AntiSpam_Activator {
 			'cf7a_customizations_prefix'       => CF7ANTISPAM_PREFIX,
 			'cf7a_cipher'                      => 'aes-128-cbc',
 			'cf7a_score_preset'                => 'weak',
-			'cf7a_disable_reload'              => true,
-			'check_bot_fingerprint'            => true,
-			'check_bot_fingerprint_extras'     => true,
-			'append_on_submit'                 => true,
+			'cf7a_disable_reload'              => false,
+			'optimize_scripts_loading'         => false,
+			'check_bot_fingerprint'            => false,
+			'check_bot_fingerprint_extras'     => false,
+			'append_on_submit'                 => false,
 			'check_time'                       => true,
 			'check_time_min'                   => 6,
 			'check_time_max'                   => YEAR_IN_SECONDS,
@@ -162,41 +163,70 @@ class CF7_AntiSpam_Activator {
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		/* Create the term database  if not available */
-		if ( $wpdb->get_var( "SHOW TABLES like '{$table_wordlist}'" ) !== $table_wordlist ) {
+		/* Create the term database if not available */
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$has_wordlist_table = $wpdb->get_var(
+			$wpdb->prepare("SHOW TABLES like %s",$table_wordlist)
+		);
+		if ( $has_wordlist_table !== $table_wordlist ) {
 			$cf7a_wordlist = 'CREATE TABLE IF NOT EXISTS `' . $table_wordlist . "` (
 			  `token` varchar(100) character set utf8 collate utf8_bin NOT NULL,
 			  `count_ham` int unsigned default NULL,
 			  `count_spam` int unsigned default NULL,
 			  PRIMARY KEY (`token`)
 			) $charset_collate;";
-
 			dbDelta( $cf7a_wordlist );
 
-			$cf7a_wordlist_version = 'INSERT INTO `' . $wpdb->prefix . "cf7a_wordlist` (`token`, `count_ham`) VALUES ('b8*dbversion', '3');";
-			$cf7a_wordlist_texts   = 'INSERT INTO `' . $wpdb->prefix . "cf7a_wordlist` (`token`, `count_ham`, `count_spam`) VALUES ('b8*texts', '0', '0');";
+			/* Insert the default values */
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+			$wpdb->query( $wpdb->prepare(  "INSERT INTO %i (`token`, `count_ham`) VALUES ('b8*dbversion', '3');", $table_wordlist ) );
 
-			dbDelta( $cf7a_wordlist_version );
-			dbDelta( $cf7a_wordlist_texts );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+			$wpdb->query( $wpdb->prepare( "INSERT INTO %i (`token`, `count_ham`, `count_spam`) VALUES ('b8*texts', '0', '0');", $table_wordlist ) );
 
 			cf7a_log( "{$table_wordlist} table creation succeeded", 2 );
 		}
 
 		/* Create the blacklist database */
-		if ( $wpdb->get_var( "SHOW TABLES like '{$table_blacklist}'" ) !== $table_blacklist ) {
-			$cf7a_database = "CREATE TABLE IF NOT EXISTS `{$table_blacklist}` (
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$has_blacklist_table = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES like %s" , $table_blacklist) );
+		if ( $has_blacklist_table !== $table_blacklist ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange
+			$cf7a_database = "CREATE TABLE IF NOT EXISTS $table_blacklist (
 				 `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
 				 `ip` varchar(45) NOT NULL,
 				 `status` int(10) unsigned DEFAULT NULL,
 				 `meta` longtext,
+			    `modified` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+			    `created` datetime DEFAULT CURRENT_TIMESTAMP,
 				 PRIMARY KEY (`id`),
 	             UNIQUE KEY `id` (`ip`)
 			) $charset_collate;";
 
-			dbDelta( $cf7a_database );
+			$result = dbDelta( $cf7a_database );
 
-			cf7a_log( "{$table_blacklist} table creation succeeded", 2 );
+			if ( $result ) {
+				cf7a_log( "{$table_blacklist} table creation/update succeeded", 2 );
+			} else {
+				cf7a_log( "{$table_blacklist} table creation/update failed", 1 );
+			}
 		}
+	}
+
+	/**
+	 * Store the update data
+	 *
+	 * @param array $options - the options array.
+	 */
+	private static function store_update_data( $options ) {
+		/* update the plugin update time field */
+		$options['last_update_data'] = array(
+			'time' => time(),
+			'old_version' => $options['cf7a_version'] ?? 'unknown',
+			'new_version' => CF7ANTISPAM_VERSION,
+			'errors' => array(),
+		);
+		return $options;
 	}
 
 	/**
@@ -222,10 +252,14 @@ class CF7_AntiSpam_Activator {
 			add_option( 'cf7a_options', $new_options );
 
 		} else {
-
-			/* update the plugin options but add the new options automatically */
+			/* if the plugin is already installed, update the plugin options automatically */
 			if ( isset( $options['cf7a_version'] ) ) {
-				unset( $options['cf7a_version'] );
+
+				/* update the plugin last update time field if the current version is set (so we are updating the plugin and not installing it) */
+				$options = self::store_update_data( $options );
+
+				/* remove the version field */
+				$options['cf7a_version'] = CF7ANTISPAM_VERSION;
 			}
 
 			/* merge previous options with the updated copy keeping the already selected option as default */
@@ -238,7 +272,10 @@ class CF7_AntiSpam_Activator {
 
 		cf7a_log( $new_options, 1 );
 
-		CF7_AntiSpam_Admin_Tools::cf7a_push_notice( esc_html__( 'CF7 AntiSpam updated successful! Please flush cache to refresh hidden form data', 'cf7-antispam' ), 'success cf7-antispam' );
+		CF7_AntiSpam_Admin_Tools::cf7a_push_notice(
+			esc_html__( 'CF7 AntiSpam updated successful! Please flush cache to refresh hidden form data', 'cf7-antispam' ),
+			'success cf7-antispam'
+		);
 	}
 
 	/**
@@ -257,7 +294,7 @@ class CF7_AntiSpam_Activator {
 		/* If the options do not exist then create them*/
 		self::update_options();
 
-		/* Checks and handles updates on version change */
+		/* Checks and handles updates on version change, shou */
 		$options = get_option( 'cf7a_options' );
 		$updater = new \CF7_AntiSpam\Engine\CF7_AntiSpam_Updater( CF7ANTISPAM_VERSION, $options );
 		$updater->may_do_updates();
@@ -275,6 +312,7 @@ class CF7_AntiSpam_Activator {
 
 		if ( is_multisite() && $network_wide ) {
 			// Get all blogs in the network and activate plugin on each one.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$blog_ids = $wpdb->get_col( "SELECT blog_id FROM $wpdb->blogs" );
 			foreach ( $blog_ids as $blog_id ) {
 				switch_to_blog( $blog_id );
@@ -285,5 +323,4 @@ class CF7_AntiSpam_Activator {
 			self::activate();
 		}
 	}
-
 }

@@ -24,10 +24,29 @@ class CurlRequest implements Request
     private $url;
 
     /**
-     * @var array
+     * @var array{
+     *     caBundle?: string,
+     *     connectTimeout: float|int,
+     *     curlHandle: \CurlHandle,
+     *     headers: array<int, string>,
+     *     proxy: string|null,
+     *     timeout: float|int,
+     *     userAgent: string
+     * }
      */
     private $options;
 
+    /**
+     * @param array{
+     *     caBundle?: string,
+     *     connectTimeout: float|int,
+     *     curlHandle: \CurlHandle,
+     *     headers: array<int, string>,
+     *     proxy: string|null,
+     *     timeout: float|int,
+     *     userAgent: string
+     * } $options
+     */
     public function __construct(string $url, array $options)
     {
         $this->url = $url;
@@ -37,6 +56,8 @@ class CurlRequest implements Request
 
     /**
      * @throws HttpException
+     *
+     * @return array{0:int, 1:string|null, 2:string|null}
      */
     public function post(string $body): array
     {
@@ -48,6 +69,9 @@ class CurlRequest implements Request
         return $this->execute($curl);
     }
 
+    /**
+     * @return array{0:int, 1:string|null, 2:string|null}
+     */
     public function get(): array
     {
         $curl = $this->createCurl();
@@ -81,21 +105,11 @@ class CurlRequest implements Request
         $opts[\CURLOPT_USERAGENT] = $this->options['userAgent'];
         $opts[\CURLOPT_PROXY] = $this->options['proxy'];
 
-        // The defined()s are here as the *_MS opts are not available on older
-        // cURL versions
         $connectTimeout = $this->options['connectTimeout'];
-        if (\defined('CURLOPT_CONNECTTIMEOUT_MS')) {
-            $opts[\CURLOPT_CONNECTTIMEOUT_MS] = ceil($connectTimeout * 1000);
-        } else {
-            $opts[\CURLOPT_CONNECTTIMEOUT] = ceil($connectTimeout);
-        }
+        $opts[\CURLOPT_CONNECTTIMEOUT_MS] = (int) ceil($connectTimeout * 1000);
 
         $timeout = $this->options['timeout'];
-        if (\defined('CURLOPT_TIMEOUT_MS')) {
-            $opts[\CURLOPT_TIMEOUT_MS] = ceil($timeout * 1000);
-        } else {
-            $opts[\CURLOPT_TIMEOUT] = ceil($timeout);
-        }
+        $opts[\CURLOPT_TIMEOUT_MS] = (int) ceil($timeout * 1000);
 
         curl_setopt_array($this->ch, $opts);
 
@@ -106,6 +120,8 @@ class CurlRequest implements Request
      * @param \CurlHandle $curl
      *
      * @throws HttpException
+     *
+     * @return array{0:int, 1:string|null, 2:string|null}
      */
     private function execute($curl): array
     {
@@ -129,7 +145,7 @@ class CurlRequest implements Request
             // indicates server did not send valid Content-Type: header" for
             // CURLINFO_CONTENT_TYPE. However, it will return FALSE if no header
             // is set. To keep our types simple, we return null in this case.
-            ($contentType === false ? null : $contentType),
+            $contentType === false ? null : $contentType,
             $body,
         ];
     }

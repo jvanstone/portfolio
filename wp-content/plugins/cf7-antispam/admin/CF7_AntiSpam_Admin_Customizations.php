@@ -31,6 +31,15 @@ class CF7_AntiSpam_Admin_Customizations {
 	public $options;
 
 	/**
+	 * The GeoIP object
+	 *
+	 * @since    7.0.0
+	 * @access   private
+	 * @var      CF7_Antispam_Geoip    $geoip    GeoIP object.
+	 */
+	private CF7_Antispam_Geoip $geoip;
+
+	/**
 	 * The plugin main menu
 	 *
 	 * The function `__construct()` is called when the class is instantiated.
@@ -49,6 +58,8 @@ class CF7_AntiSpam_Admin_Customizations {
 		/* the plugin options */
 		$this->options = CF7_AntiSpam::get_options();
 
+		$this->geoip = new CF7_Antispam_Geoip();
+
 		add_action( 'admin_init', array( $this, 'cf7a_options_init' ) );
 	}
 
@@ -62,14 +73,6 @@ class CF7_AntiSpam_Admin_Customizations {
 			'cf7_antispam_options',
 			'cf7a_options',
 			array( $this, 'cf7a_sanitize_options' )
-		);
-
-		/* Section Bot Fingerprint */
-		add_settings_section(
-			'cf7a_subtitle',
-			__( 'Settings', 'cf7-antispam' ),
-			array( $this, 'cf7a_print_section_main_subtitle' ),
-			'cf7a-settings'
 		);
 
 		/* Section Bot Fingerprint */
@@ -159,15 +162,6 @@ class CF7_AntiSpam_Admin_Customizations {
 			'cf7a_check_geoip'
 		);
 
-		/* Settings enable geoip */
-		add_settings_field(
-			'check_geoip_enabled',
-			__( 'Database available', 'cf7-antispam' ),
-			array( $this, 'cf7a_geoip_is_enabled_callback' ),
-			'cf7a-settings',
-			'cf7a_check_geoip'
-		);
-
 		/**
 		 * The maxmind update key (unless you have defined it). Adds cron job to keep database updated;
 		 * https://www.maxmind.com/en/geolite2/signup?lang=en
@@ -176,6 +170,37 @@ class CF7_AntiSpam_Admin_Customizations {
 			'geoip_dbkey',
 			__( 'MaxMind Update Key', 'cf7-antispam' ),
 			array( $this, 'cf7a_geoip_key_callback' ),
+			'cf7a-settings',
+			'cf7a_check_geoip'
+		);
+
+		/* Settings upload geoip database */
+		if ( ! empty( $this->geoip->has_license() ) ) {
+			add_settings_field(
+				'enable_geoip_force_download',
+				__( 'Force database download', 'cf7-antispam' ),
+				array( $this, 'cf7a_force_download_callback' ),
+				'cf7a-settings',
+				'cf7a_check_geoip'
+			);
+		}
+
+		/* Settings upload geoip database */
+		if ( empty( $this->geoip->is_automatic_download_enabled() ) ) {
+			add_settings_field(
+				'enable_geoip_manual_upload',
+				__( 'Database manual upload', 'cf7-antispam' ),
+				array( $this, 'cf7a_enable_geoip_manual_upload_callback' ),
+				'cf7a-settings',
+				'cf7a_check_geoip'
+			);
+		}
+
+		/* Settings enable geoip */
+		add_settings_field(
+			'check_geoip_enabled',
+			__( 'Database available', 'cf7-antispam' ),
+			array( $this, 'cf7a_geoip_is_enabled_callback' ),
 			'cf7a-settings',
 			'cf7a_check_geoip'
 		);
@@ -547,15 +572,6 @@ class CF7_AntiSpam_Admin_Customizations {
 
 		/* Enable customizations */
 		add_settings_field(
-			'cf7a_disable_reload',
-			__( 'Disable cf7 form reload if the page is cached', 'cf7-antispam' ),
-			array( $this, 'cf7a_disable_reload_callback' ),
-			'cf7a-settings',
-			'cf7a_customizations'
-		);
-
-		/* Enable customizations */
-		add_settings_field(
 			'cf7a_customizations_class',
 			__( 'Your unique css class', 'cf7-antispam' ),
 			array( $this, 'cf7a_customizations_class_callback' ),
@@ -581,10 +597,36 @@ class CF7_AntiSpam_Admin_Customizations {
 			'cf7a_customizations'
 		);
 
+		/* Section Optimizations */
+		add_settings_section(
+			'cf7a_optimizations',
+			__( 'Optimizations', 'cf7-antispam' ),
+			array( $this, 'cf7a_optimizations' ),
+			'cf7a-settings'
+		);
+
+		/* Settings Script optimizations */
+		add_settings_field(
+			'cf7a_optimizations_scripts',
+			__( 'Optimize scripts loading', 'cf7-antispam' ),
+			array( $this, 'cf7a_optimizations_scripts_callback' ),
+			'cf7a-settings',
+			'cf7a_optimizations'
+		);
+
+		/* Disable cf7 form reload if the page is cached */
+		add_settings_field(
+			'cf7a_disable_reload',
+			__( 'Disable cf7 form reload if the page is cached', 'cf7-antispam' ),
+			array( $this, 'cf7a_disable_reload_callback' ),
+			'cf7a-settings',
+			'cf7a_optimizations'
+		);
+
 		/* Section advanced settings */
 		add_settings_section(
 			'cf7a_advanced',
-			__( 'Enable advanced settings', 'cf7-antispam' ),
+			__( 'Spam Score Rating', 'cf7-antispam' ),
 			array( $this, 'cf7a_print_advanced_settings' ),
 			'cf7a-settings'
 		);
@@ -592,7 +634,7 @@ class CF7_AntiSpam_Admin_Customizations {
 		/* Score Preset */
 		add_settings_field(
 			'cf7a_score_preset',
-			__( 'Severity of anti-spam control', 'cf7-antispam' ),
+			__( 'Anti-spam control level', 'cf7-antispam' ),
 			array( $this, 'cf7a_score_preset_callback' ),
 			'cf7a-settings',
 			'cf7a_advanced'
@@ -679,70 +721,17 @@ class CF7_AntiSpam_Admin_Customizations {
 		);
 	}
 
-
-	/**
-	 * It returns a random tip from an array of tips
-	 *
-	 * @return string a random tip from the array of tips.
-	 */
-	public function cf7a_get_a_random_tip() {
-		$tips = array(
-			__( 'Do you know,that you can save settings simply using the shortcut [Ctrl + S].', 'cf7-antispam' ),
-			__( 'In the CF7-Antispam settings page you can enter values in textarea using the comma-separated format and, on saving, the strings will be split up into one per line format.', 'cf7-antispam' ),
-			sprintf(
-				/* translators: %s is the (hypothetical) link to the contact page (www.my-website.xyz/contacts). */
-				'%s <a href="%s" target="_blank">%s</a>',
-				__( 'It is always a good practice to NOT name "contact" the slug of the page with the form. This makes it very easy for a bot to find it, doesn\'t it?', 'cf7-antispam' ),
-				trailingslashit( get_bloginfo( 'url' ) ) . __( 'contacts', 'cf7-antispam' ),
-				__( 'Give a try', 'cf7-antispam' )
-			),
-			sprintf(
-				/* translators: %s is the link to Flamingo documentation. */
-				"%s <a href='%s' target='_blank'>%s</a>. %s",
-				__( 'As Flamingo also CF7-Antispam can handle', 'cf7-antispam' ),
-				esc_url_raw( 'https://contactform7.com/save-submitted-messages-with-flamingo/' ),
-				__( 'fields with multiple tags', 'cf7-antispam' ),
-				__( 'In this way, you can scan as a message multiple fields at once (subject line or second text field...)', 'cf7-antispam' )
-			),
-		);
-
-		return $tips[ round( wp_rand( 0, count( $tips ) - 1 ) ) ];
-	}
-
-	/**
-	 * It prints The main setting text below the title
-	 *
-	 * TODO: some random tips to protect the website like don't use as page title "contacts" an so on
-	 */
-	public function cf7a_print_section_main_subtitle() {
-		$tips_wpkses_format = array(
-			'a' => array(
-				'href'   => array(),
-				'target' => array(),
-			),
-		);
-
-		printf(
-			'<p>%s</p><div class="cf7a-tip"><p><strong>💡 %s</strong> %s</p></div>',
-			esc_html__( 'For most cases the following settings are fine, but you can have fun configuring the antispam to achieve the level of protection you prefer!', 'cf7-antispam' ),
-			esc_html__( 'Tip:', 'cf7-antispam' ),
-			wp_kses(
-				self::cf7a_get_a_random_tip(),
-				$tips_wpkses_format
-			)
-		);
-	}
-
 	/**
 	 * It prints a paragraph with a description of the section
 	 */
 	public function cf7a_print_section_auto_blacklist() {
 		printf( '<p>' . esc_html__( 'How many failed attempts before being banned', 'cf7-antispam' ) . '</p>' );
-		if ( wp_next_scheduled( 'cf7a_cron' ) && CF7ANTISPAM_DEBUG ) {
+		$next = wp_next_scheduled( 'cf7a_cron' );
+		if ( $next ) {
 			printf(
 				'<small class="monospace">%s %s <br/>Server time %s</small>',
 				esc_html__( 'Next scheduled unban event:', 'cf7-antispam' ),
-				esc_html( wp_date( 'Y-m-d H:i:s', wp_next_scheduled( 'cf7a_cron' ) ) ),
+				esc_html( wp_date( 'Y-m-d H:i:s', $next ) ),
 				esc_html( wp_date( 'Y-m-d H:i:s', time() ) )
 			);
 		}
@@ -830,9 +819,10 @@ class CF7_AntiSpam_Admin_Customizations {
 		printf( '<p>%s</p>', esc_html__( 'Check sender ip on DNS Blacklists, DNSBL are real-time lists of proven/recognised spam addresses. These may include lists of addresses of zombie computers or other machines used to send spam, Internet Service Providers (ISPs) that voluntarily host spammers, BUT they could also be users behind a proxy and that is why the method is no longer 100 per cent reliable. Add a DSNBL server url each line ', 'cf7-antispam' ) );
 		/** Translators: %s%s%s - a spam score of xyz will be added  */
 		printf( '<p><span class="cf7a-option-notice">%s%s%s</span></p>', esc_html__( '⚠️ Use FEW servers, those you tested reliable, and consider that for each server reporting the ip a spam score of ', 'cf7-antispam' ), floatval( $this->options['score']['_dnsbl'] ), esc_html__( ' will be added to the spam rating, 1 equal spam.', 'cf7-antispam' ) );
-		printf( '<p>%s<a href="%s" target="_blank">%s</a></p>',
+		printf(
+			'<p>%s<a href="%s" target="_blank">%s</a></p>',
 			esc_html__( 'Here a you can find a list of servers: ', 'cf7-antispam' ),
-			esc_url('https://gist.github.com/search?q=dnsbl+list&ref=searchresults'),
+			esc_url( 'https://gist.github.com/search?q=dnsbl+list&ref=searchresults' ),
 			esc_url_raw( 'gist.github.com/search?q=dnsbl+list' )
 		);
 	}
@@ -865,14 +855,15 @@ class CF7_AntiSpam_Admin_Customizations {
 	/** It prints the b8 info text */
 	public function cf7a_print_b8() {
 		printf( '<p>%s</p>', esc_html__( 'Tells you whether a text is spam or not, using statistical text analysis of the text message', 'cf7-antispam' ) );
+		printf( '<p>%s</p>', esc_html__( 'The threshold value is the minimum score required for a text to be considered spam. 1 is spam. 0 is not spam. If the threshold value is too low, you may receive false positives, while if it is too high, you may miss some spam.', 'cf7-antispam' ) );
 	}
 
 	/** It prints the customizations info */
 	public function cf7a_print_customizations() {
 		printf(
 			'<p>%s</p><p>%s</p>',
-			esc_html__( 'RECOMMENDED: create your own and unique css class and customized fields name', 'cf7-antispam' ),
-			esc_html__( "You can also choose in encryption method. But, After changing cypher do a couple of tests because a small amount of them aren't compatible with the format of the form data.", 'cf7-antispam' )
+			esc_html__( 'RECOMMENDED: Site related configuration', 'cf7-antispam' ),
+			esc_html__( "create your own and unique css class and customized fields name. Optionally, you can choose in encryption method. But, After changing cypher do a couple of tests because a small amount of them aren't compatible with the format of the form data.", 'cf7-antispam' )
 		);
 	}
 
@@ -958,59 +949,71 @@ class CF7_AntiSpam_Admin_Customizations {
 	}
 
 	/**
-	 * If the user has enabled the GeoIP feature schedule the download of the database, and the GeoIP database is not already downloaded, download it
+	 * If the user has enabled the GeoIP feature schedule the download of the database, and the GeoIP database is not yet downloaded, download it
 	 * if the user has disabled the GeoIP feature, unscheduled the download event
 	 *
 	 * @param 1|0 $enabled input The input value.
 	 */
 	public function cf7a_enable_geo( $enabled ) {
-		$geo = new CF7_Antispam_Geoip();
-
 		if ( 0 === $enabled ) {
 			/* delete the geo db next update stored option and the scheduled event */
 			$timestamp = wp_next_scheduled( 'cf7a_geoip_update_db' );
 			if ( $timestamp ) {
 				wp_unschedule_event( $timestamp, 'cf7a_geoip_update_db' );
 			}
-		} elseif ( $geo->cf7a_geoip_has_license() ) {
+		} elseif ( $this->geoip->has_license() ) {
 			/* Otherwise schedule update / download the database if needed */
-			$geo->cf7a_geoip_schedule_update( $geo->cf7a_maybe_download_geoip_db() );
+			if ($this->geoip->maybe_download() !== false) {
+				$this->geoip->schedule_update();
+			};
 		}
 	}
 
 	/**
 	 * Handles WP-cron task registrations
 	 *
-	 * @param array  $input      - The post input values.
+	 * @param array  $input      - The post-input values.
 	 * @param string $input_name - The value of the input field.
 	 * @param string $cron_task  - The slug of the Post value.
-	 * @param array  $schedule   - The schedules list obtained with wp_get_schedules().
+	 * @param array  $schedule   - The schedule list obtained with wp_get_schedules().
 	 *
 	 * @return array|false the new value that the user has selected
 	 */
 	private function cf7a_input_cron_schedule( $input, $input_name, $cron_task, $schedule ) {
-		$new_value = false;
+		$new_value = $this->options[ $input_name ];
 
-		if ( ! empty( $input[ $input_name ] ) && in_array( $input[ $input_name ], array_keys( $schedule ), true ) ) {
-			if ( $this->options[ $input_name ] !== $input[ $input_name ] ) {
+		// if the value has changed
+		if ( $this->options[ $input_name ] !== $input[ $input_name ] ) {
+			// if the user has disabled the cron task
+			if ( $input[ $input_name ] === 'disabled' ) {
+
+				/* Get the timestamp for the next event and unschedule it. */
+				wp_clear_scheduled_hook( 'cf7a_cron' );
+				return 'disabled';
+			}
+
+			// if the value is not empty and is a valid schedule
+			if ( ! empty( $input[ $input_name ] ) && in_array( $input[ $input_name ], array_keys( $schedule ), true ) ) {
+				// if the user has enabled the cron task and selected a schedule
 				$new_value = $input[ $input_name ];
-				/* delete previous scheduled events */
-				$timestamp = wp_next_scheduled( $cron_task );
-				if ( $timestamp ) {
-					wp_clear_scheduled_hook( $cron_task );
-				}
+
+				/* delete all the previous scheduled events */
+				wp_clear_scheduled_hook( 'cf7a_cron' );
 
 				/* add the new scheduled event */
-				wp_schedule_event( time() + $schedule[ $new_value ]['interval'], $new_value, $cron_task );
+				$interval_seconds = isset( $schedule[ $new_value ]['interval'] ) ? (int) $schedule[ $new_value ]['interval'] : 0;
+
+				if ( $interval_seconds > 0 ) {
+					$next_run = time() + $interval_seconds;
+
+					wp_schedule_event( $next_run, $new_value, $cron_task );
+				} else {
+					cf7a_log( 'Unable to schedule event for ' . $cron_task );
+				}
 			}
-		} else {
-			/* Get the timestamp for the next event. */
-			$timestamp = wp_next_scheduled( $cron_task );
-			if ( $timestamp ) {
-				wp_clear_scheduled_hook( $cron_task );
-			}
-			return 'disabled';
 		}
+
+		// return the new value
 		return $new_value;
 	}
 
@@ -1054,12 +1057,15 @@ class CF7_AntiSpam_Admin_Customizations {
 	 */
 	public function cf7a_sanitize_options( $input ) {
 		/* get the import options */
-		$new_input   = $this->options;
-		if ( isset( $_POST['to-import'] ) ) {
-			$json_data = json_decode( stripslashes($_POST['to-import'] ) );
-			if ( ! empty( $json_data ) && is_object($json_data) ) {
-				$input     = $this->cf7a_clean_recursive( $json_data );
-				// monkey pathing arrays that needs to be imploded
+		$new_input = $this->options;
+
+		if ( isset( $_POST['to-import'] ) and isset( $_POST['cf7a-nonce'] ) and wp_verify_nonce( sanitize_text_field(wp_unslash($_POST['cf7a-nonce'] ) ), 'cf7a-nonce' ) ) {
+
+			$to_import = sanitize_text_field(wp_unslash($_POST['to-import'] ) );
+			$json_data = json_decode( $to_import );
+
+			if ( ! empty( $json_data ) && is_object( $json_data ) ) {
+				$input = $this->cf7a_clean_recursive( $json_data );
 				$input['bad_ip_list']                     = implode( ',', $input['bad_ip_list'] );
 				$input['ip_whitelist']                    = implode( ',', $input['ip_whitelist'] );
 				$input['bad_email_strings_list']          = implode( ',', $input['bad_email_strings_list'] );
@@ -1073,7 +1079,7 @@ class CF7_AntiSpam_Admin_Customizations {
 				$input['cf7a_enable']                     = 1;
 				$input['cf7a_version']                    = CF7ANTISPAM_VERSION;
 			} else {
-				cf7a_log( print_r($_POST['to-import'], true) );
+				cf7a_log( print_r( $to_import, true ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
 				cf7a_log( 'CF7 AntiSpam: The import data is invalid' );
 				return $this->options;
 			}
@@ -1081,7 +1087,7 @@ class CF7_AntiSpam_Admin_Customizations {
 
 		$new_input['cf7a_enabled'] = isset( $input['cf7a_enabled'] ) ? 1 : 0;
 
-		$new_input['cf7a_enable'] = isset( $input['cf7a_enable'] ) ? $input['cf7a_enable'] : $new_input['cf7a_enable'];
+		$new_input['cf7a_enable'] = $input['cf7a_enable'] ?? $new_input['cf7a_enable'];
 
 		/* bot fingerprint */
 		$new_input['check_bot_fingerprint']        = isset( $input['check_bot_fingerprint'] ) ? 1 : 0;
@@ -1098,12 +1104,62 @@ class CF7_AntiSpam_Admin_Customizations {
 		 * Checking if the enable_geoip_download is not set (note the name is $new_input but actually is the copy of the stored options)
 		 * and the user has chosen to enable the geoip, in this case download the database if needed
 		 */
-		if ( empty( $import_data ) && empty( $new_input['enable_geoip_download'] ) && isset( $input['enable_geoip_download'] ) ) {
+		if ( ! empty( $new_input['enable_geoip_download'] ) ) {
 			$this->cf7a_enable_geo( $new_input['enable_geoip_download'] );
 		}
 
 		$new_input['enable_geoip_download'] = isset( $input['enable_geoip_download'] ) ? 1 : 0;
 
+		// if the download is disabled, check if the database is uploaded
+		if ( ! $new_input['enable_geoip_download'] )  {
+
+			// Get the file name
+			if (! empty($_FILES) && !empty($_FILES['geoip_dbfile'])) {
+				// Fix for the file type check
+				add_filter( 'wp_check_filetype_and_ext', function ( $types, $file, $filename) {
+					if( 'tar.gz' === substr( $filename, -6 ) ) {
+						$types['ext'] = 'tar.gz';
+						$types['type'] = 'application/gzip';
+					}
+					return $types;
+				}, 10, 3 );
+
+				// Validate the uploaded file - The second parameter $overrides enables security
+				$upload = wp_handle_upload( $_FILES['geoip_dbfile'], array(
+					'test_form' => false,
+					'mimes'     => array(
+						'mmdb'   => 'application/octet-stream',
+						'tar.gz' => 'application/gzip',
+					),
+				) );
+
+				if ( ! empty( $upload['error'] ) ) {
+					// If the file upload failed
+					if ( $upload['error'] !== UPLOAD_ERR_NO_FILE ) {
+						CF7_AntiSpam_Admin_Tools::cf7a_push_notice(
+							sprintf(
+								 /* translators: %s is the error message */
+								 esc_html__("Error uploading file: %s", 'cf7-antispam' ), $upload['error']
+							)
+						);
+					}
+					// Continue
+				} else {
+					// Upload success
+					$temp = $upload["file"];
+					$result = $this->geoip->manual_upload( $temp );
+					if ( $result ) {
+						CF7_AntiSpam_Admin_Tools::cf7a_push_notice(
+							esc_html__( 'GeoIP database uploaded successfully.', 'cf7-antispam' )
+						);
+					} else {
+						CF7_AntiSpam_Admin_Tools::cf7a_push_notice(
+							esc_html__( 'Error processing the uploaded file.', 'cf7-antispam' )
+						);
+					}
+				}
+			}
+		}
 
 		$new_input['geoip_dbkey'] = isset( $input['geoip_dbkey'] ) ? sanitize_textarea_field( $input['geoip_dbkey'] ) : false;
 
@@ -1121,7 +1177,6 @@ class CF7_AntiSpam_Admin_Customizations {
 			? $this->cf7a_settings_format_user_input( sanitize_textarea_field( $input['languages_locales']['disallowed'] ) )
 			: array();
 
-
 		/* max attempts before ban */
 		$new_input['max_attempts'] = isset( $input['max_attempts'] ) ? intval( $input['max_attempts'] ) : 3;
 
@@ -1133,10 +1188,6 @@ class CF7_AntiSpam_Admin_Customizations {
 
 		/* unban after */
 		$new_input['unban_after'] = $this->cf7a_input_cron_schedule( $input, 'unban_after', 'cf7a_cron', $schedule );
-
-		/*
-		 report by mail */
-		// $new_input['mail_report'] = $this->cf7a_input_cron_schedule( $schedule, 'mail_report', 'cf7a_cron_report' );
 
 		/* bad ip */
 		$new_input['check_refer']  = isset( $input['check_refer'] ) ? 1 : 0;
@@ -1205,37 +1256,37 @@ class CF7_AntiSpam_Admin_Customizations {
 		$threshold                 = floatval( $input['b8_threshold'] );
 		$new_input['b8_threshold'] = $threshold >= 0 && $threshold < 1 ? $threshold : 1;
 
-		$score_preset = $this->cf7a_get_scores_presets();
-
-		/* Scoring:  if the preset name is equal to $selected and (the old score is the same of the new one OR the preset score $selected is changed) */
-		if ( $input['score'] !== $this->options['score'] || $input['cf7a_score_preset'] !== $this->options['cf7a_score_preset'] ) {
-			if ( 'weak' === $input['cf7a_score_preset'] ) {
-				$new_input['score']             = $score_preset['weak'];
-				$new_input['cf7a_score_preset'] = 'weak';
-			} elseif ( 'standard' === $input['cf7a_score_preset'] ) {
-				$new_input['score']             = $score_preset['standard'];
-				$new_input['cf7a_score_preset'] = 'standard';
-			} elseif ( 'secure' === $input['cf7a_score_preset'] ) {
-				$new_input['score']             = $score_preset['secure'];
-				$new_input['cf7a_score_preset'] = 'secure';
-			} else {
-				$new_input['score']['_fingerprinting'] = isset( $input['score']['_fingerprinting'] ) ? floatval( $input['score']['_fingerprinting'] ) : 0.25;
-				$new_input['score']['_time']           = isset( $input['score']['_time'] ) ? floatval( $input['score']['_time'] ) : 1;
-				$new_input['score']['_bad_string']     = isset( $input['score']['_bad_string'] ) ? floatval( $input['score']['_bad_string'] ) : 1;
-				$new_input['score']['_dnsbl']          = isset( $input['score']['_dnsbl'] ) ? floatval( $input['score']['_dnsbl'] ) : 0.2;
-				$new_input['score']['_honeypot']       = isset( $input['score']['_honeypot'] ) ? floatval( $input['score']['_honeypot'] ) : 1;
-				$new_input['score']['_detection']      = isset( $input['score']['_detection'] ) ? floatval( $input['score']['_detection'] ) : 5;
-				$new_input['score']['_warn']           = isset( $input['score']['_warn'] ) ? floatval( $input['score']['_warn'] ) : 1;
-				$new_input['cf7a_score_preset']        = 'custom';
-			}
-		}
-
 		/* Advanced settings */
 		$new_input['enable_advanced_settings'] = isset( $input['enable_advanced_settings'] ) ? 1 : 0;
+		$score_preset                          = $this->cf7a_get_scores_presets();
+
+		$preset_changed = ( $input['cf7a_score_preset'] !== $this->options['cf7a_score_preset'] );
+		$scores_changed = ( $input['score'] != $this->options['score'] );
+
+		/* Scoring: if the preset name is equal to $selected and (the old score is the same of the new one OR the preset score $selected is changed) */
+		if ( $preset_changed ) {
+			// User selected a different preset - use preset values
+			if ( in_array( $input['cf7a_score_preset'], array( 'weak', 'standard', 'secure' ) ) ) {
+				$new_input['score']             = $score_preset[ $input['cf7a_score_preset'] ];
+				$new_input['cf7a_score_preset'] = $input['cf7a_score_preset'];
+			}
+		} elseif ( $scores_changed ) {
+			// User manually changed scores (preset didn't change) - use custom values
+			$new_input['score']['_fingerprinting'] = isset( $input['score']['_fingerprinting'] ) ? floatval( $input['score']['_fingerprinting'] ) : 0.25;
+			$new_input['score']['_time']           = isset( $input['score']['_time'] ) ? floatval( $input['score']['_time'] ) : 1;
+			$new_input['score']['_bad_string']     = isset( $input['score']['_bad_string'] ) ? floatval( $input['score']['_bad_string'] ) : 1;
+			$new_input['score']['_dnsbl']          = isset( $input['score']['_dnsbl'] ) ? floatval( $input['score']['_dnsbl'] ) : 0.2;
+			$new_input['score']['_honeypot']       = isset( $input['score']['_honeypot'] ) ? floatval( $input['score']['_honeypot'] ) : 1;
+			$new_input['score']['_detection']      = isset( $input['score']['_detection'] ) ? floatval( $input['score']['_detection'] ) : 5;
+			$new_input['score']['_warn']           = isset( $input['score']['_warn'] ) ? floatval( $input['score']['_warn'] ) : 1;
+			$new_input['cf7a_score_preset']        = 'custom';
+		}
+
+		/* Optimizations */
+		$new_input['optimize_scripts_loading'] = !empty( $input['optimize_scripts_loading'] ) ? 1 : 0;
+		$new_input['cf7a_disable_reload'] = !empty( $input['cf7a_disable_reload'] ) ? 1 : 0;
 
 		/* Customizations */
-		$new_input['cf7a_disable_reload'] = isset( $input['cf7a_disable_reload'] ) ? 1 : 0;
-
 		$input['cf7a_customizations_class']     = sanitize_html_class( $input['cf7a_customizations_class'] );
 		$new_input['cf7a_customizations_class'] = ! empty( $input['cf7a_customizations_class'] ) ? sanitize_html_class( $input['cf7a_customizations_class'] ) : CF7ANTISPAM_HONEYPOT_CLASS;
 
@@ -1298,13 +1349,22 @@ class CF7_AntiSpam_Admin_Customizations {
 	 */
 	public function cf7a_unban_after_callback() {
 		/* the list of available schedules */
-		$schedules   = array_keys( wp_get_schedules() );
-		$schedules[] = 'disabled';
+		$schedules         = wp_get_schedules();
+		$valid_schedules   = array_keys(
+			array_filter(
+				$schedules,
+				function ( $s ) {
+					return ! empty( $s['interval'] ) && $s['interval'] > 0;
+				}
+			)
+		);
+		$valid_schedules[] = 'disabled';
+
 		printf(
 			'<select id="unban_after" name="cf7a_options[unban_after]">%s</select>',
 			wp_kses(
 				$this->cf7a_generate_options(
-					$schedules,
+					$valid_schedules,
 					! empty( $this->options['unban_after'] ) ? $this->options['unban_after'] : ''
 				),
 				array(
@@ -1369,10 +1429,31 @@ class CF7_AntiSpam_Admin_Customizations {
 		);
 	}
 
+	/** Force database download button*/
+	public function cf7a_force_download_callback() {
+		// the upload button for the database if the download is disabled
+		printf( '<input type="button" id="geoip_force_download" class="button cf7a_action" data-action="force-geoip-download" data-callback="update-geoip-status" data-nonce="%s" value="%s" />',
+			esc_attr(wp_create_nonce( 'cf7a-nonce' )),
+			esc_attr__( 'Force Download', 'cf7-antispam' )
+		);
+	}
+
+	/** Database manual upload */
+	public function cf7a_enable_geoip_manual_upload_callback() {
+		// the upload button for the database if the download is disabled
+		printf(
+			'<label for="geoip_dbfile" class="button button-secondary">%s<input type="file" id="geoip_dbfile" name="geoip_dbfile" accept=".mmdb,.tar.gz" /></label><span id="file_name_display" class="file-name-display">%s</span>',
+			esc_html__( 'Choose DB File...', 'cf7-antispam' ),
+			esc_html__( 'No file selected', 'cf7-antispam' )
+		);
+		printf( '<p class="geoip_dbfile text-xs">%s</p>', esc_html__( 'Accepted formats: .mmdb or .tar.gz', 'cf7-antispam' ) );
+	}
+
 	/** It creates the input field "cf7a_geodb_update" */
 	public function cf7a_geoip_is_enabled_callback() {
-		$last_update = get_option( 'cf7a_geodb_update', 0 );
-		printf( ! empty( $last_update ) ? '✅ ' : '❌ ' );
+		printf( "<span class='cf7a_geoip_is_enabled'>%s</span>",
+			$this->geoip->has_database() ? '✅ ' : '❌ '
+		);
 	}
 
 	/**
@@ -1384,7 +1465,7 @@ class CF7_AntiSpam_Admin_Customizations {
 			'<input type="text" id="geoip_dbkey" name="cf7a_options[geoip_dbkey]" %s %s/>',
 			empty( $this->options['geoip_dbkey'] ) ? '' : 'value="' . esc_attr( $this->options['geoip_dbkey'] ) . '"',
 			// phpcs:ignore WordPress.Security.EscapeOutput
-			empty( CF7ANTISPAM_GEOIP_KEY ) ? '' : 'disabled placeholder="' . esc_attr__( 'KEY provided' ) . '"'
+			empty( CF7ANTISPAM_GEOIP_KEY ) ? '' : 'disabled placeholder="' . esc_attr__( 'KEY provided', 'cf7-antispam' ) . '"'
 		);
 	}
 
@@ -1398,7 +1479,7 @@ class CF7_AntiSpam_Admin_Customizations {
 
 	/** It creates the input field "cf7a_check_geo_location" */
 	public function cf7a_check_geo_location_callback() {
-		$geo_disabled = empty( get_option( 'cf7a_geodb_update' ) ) ? 'disabled' : '';
+		$geo_disabled = $this->geoip->has_database() ? '' : 'disabled';
 		printf(
 			'<input type="checkbox" id="check_geo_location" name="cf7a_options[check_geo_location]" %s %s />',
 			! empty( $this->options['check_geo_location'] ) ? esc_html( 'checked="true"' ) : '',
@@ -1578,7 +1659,8 @@ class CF7_AntiSpam_Admin_Customizations {
 	public function cf7a_honeyform_excluded_pages_callback() {
 		$args  = array(
 			'post_type' => 'page', // change this to the post type you're querying
-			'fields'    => 'ids', // get all posts
+			'fields'    => 'ids',  // get only ids
+			'posts_per_page' => -1 // get all posts
 		);
 		$query = new WP_Query( $args );
 
@@ -1669,14 +1751,6 @@ class CF7_AntiSpam_Admin_Customizations {
 		);
 	}
 
-
-	/** It creates a checkbox with the id of "cf7a_disable_reload_callback" */
-	public function cf7a_disable_reload_callback() {
-		printf(
-			'<input type="checkbox" id="cf7a_disable_reload" name="cf7a_options[cf7a_disable_reload]" %s />',
-			! empty( $this->options['cf7a_disable_reload'] ) ? 'checked="true"' : ''
-		);
-	}
 	/** It creates a checkbox with the id of "cf7a_customizations_class_callback" */
 	public function cf7a_customizations_class_callback() {
 		printf(
@@ -1712,6 +1786,27 @@ class CF7_AntiSpam_Admin_Customizations {
 					),
 				)
 			)
+		);
+	}
+
+	/** It prints the optimizations info */
+	public function cf7a_optimizations() {
+		printf( '<p>%s</p>', esc_html__( 'You can optimize the loading performance of the antispam scripts. Since optimization is a risky business, we do not recommend enabling this option without trying it first.', 'cf7-antispam' ) );
+	}
+
+	/** It creates a checkbox with the id of "optimize_scripts_loading" */
+	public function cf7a_optimizations_scripts_callback() {
+		printf(
+			'<input type="checkbox" id="optimize_scripts_loading" name="cf7a_options[optimize_scripts_loading]" %s />',
+			! empty( $this->options['optimize_scripts_loading'] ) ? 'checked="true"' : ''
+		);
+	}
+
+	/** It creates a checkbox with the id of "cf7a_disable_reload_callback" */
+	public function cf7a_disable_reload_callback() {
+		printf(
+			'<input type="checkbox" id="cf7a_disable_reload" name="cf7a_options[cf7a_disable_reload]" %s />',
+			! empty( $this->options['cf7a_disable_reload'] ) ? 'checked="true"' : ''
 		);
 	}
 
@@ -1784,7 +1879,7 @@ class CF7_AntiSpam_Admin_Customizations {
 	 */
 	public function cf7a_score_preset_callback() {
 		$options = ! empty( $this->options['enable_advanced_settings'] )
-				   || ( ! empty( $this->options['cf7a_score_preset'] ) && 'custom' === $this->options['cf7a_score_preset'] )
+					|| ( ! empty( $this->options['cf7a_score_preset'] ) && 'custom' === $this->options['cf7a_score_preset'] )
 			? array( 'weak', 'standard', 'secure', 'custom' )
 			: array( 'weak', 'standard', 'secure' );
 		printf(

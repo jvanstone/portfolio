@@ -70,6 +70,7 @@ class ComposerStaticInitecc492adc104efcc09125896a0bf8e84
     );
 
     public static $classMap = array (
+        'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Charts' => __DIR__ . '/../..' . '/admin/CF7_AntiSpam_Admin_Charts.php',
         'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Core' => __DIR__ . '/../..' . '/admin/CF7_AntiSpam_Admin_Core.php',
         'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Customizations' => __DIR__ . '/../..' . '/admin/CF7_AntiSpam_Admin_Customizations.php',
         'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Display' => __DIR__ . '/../..' . '/admin/CF7_AntiSpam_Admin_Display.php',
@@ -80,7 +81,9 @@ class ComposerStaticInitecc492adc104efcc09125896a0bf8e84
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_Flamingo' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Flamingo.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_Frontend' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Frontend.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_Loader' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Loader.php',
+        'CF7_AntiSpam\\Core\\CF7_AntiSpam_Rest_Api' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Rest_Api.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_i18n' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_i18n.php',
+        'CF7_AntiSpam\\Core\\CF7_Antispam_Blacklist' => __DIR__ . '/../..' . '/core/CF7_Antispam_Blacklist.php',
         'CF7_AntiSpam\\Core\\CF7_Antispam_Geoip' => __DIR__ . '/../..' . '/core/CF7_Antispam_Geoip.php',
         'CF7_AntiSpam\\Core\\CF7_Antispam_Service' => __DIR__ . '/../..' . '/core/CF7_Antispam_Service.php',
         'CF7_AntiSpam\\Engine\\CF7_AntiSpam_Activator' => __DIR__ . '/../..' . '/engine/CF7_AntiSpam_Activator.php',

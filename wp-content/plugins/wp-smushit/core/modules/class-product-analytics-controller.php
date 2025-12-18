@@ -5,14 +5,17 @@ namespace Smush\Core\Modules;
 use Smush\Core\Array_Utils;
 use Smush\Core\CDN\CDN_Helper;
 use Smush\Core\Helper;
+use Smush\Core\Hub_Connector;
 use Smush\Core\Media\Media_Item_Cache;
 use Smush\Core\Media\Media_Item_Query;
 use Smush\Core\Media_Library\Background_Media_Library_Scanner;
 use Smush\Core\Media_Library\Media_Library_Last_Process;
 use Smush\Core\Media_Library\Media_Library_Scan_Background_Process;
 use Smush\Core\Media_Library\Media_Library_Scanner;
+use Smush\Core\Membership\Membership;
 use Smush\Core\Modules\Background\Background_Pre_Flight_Controller;
 use Smush\Core\Modules\Background\Background_Process;
+use Smush\Core\Next_Gen\Next_Gen_Manager;
 use Smush\Core\Product_Analytics;
 use Smush\Core\Server_Utils;
 use Smush\Core\Settings;
@@ -45,11 +48,23 @@ class Product_Analytics_Controller {
 	 */
 	private $product_analytics;
 
+	/**
+	 * @var Next_Gen_Manager
+	 */
+	private $next_gen_manager;
+
+	/**
+	 * @var Array_Utils
+	 */
+	private $array_utils;
+
 	public function __construct() {
 		$this->settings                   = Settings::get_instance();
 		$this->scan_background_process    = Background_Media_Library_Scanner::get_instance()->get_background_process();
 		$this->media_library_last_process = Media_Library_Last_Process::get_instance();
 		$this->product_analytics          = Product_Analytics::get_instance();
+		$this->next_gen_manager           = Next_Gen_Manager::get_instance();
+		$this->array_utils                = new Array_Utils();
 
 		$this->hook_actions();
 	}
@@ -60,7 +75,8 @@ class Product_Analytics_Controller {
 		add_action( 'wp_smush_settings_updated', array( $this, 'intercept_settings_update' ), 10, 2 );
 		add_action( 'wp_smush_settings_deleted', array( $this, 'intercept_reset' ) );
 		add_action( 'wp_smush_settings_updated', array( $this, 'track_integrations_saved' ), 10, 2 );
-		add_action( 'wp_smush_settings_updated', array( $this, 'track_toggle_local_webp_fallback' ), 10, 2 );
+		add_action( 'wp_smush_settings_updated', array( $this, 'track_toggle_next_gen_fallback' ), 10, 2 );
+		add_action( 'wp_smush_settings_updated', array( $this, 'track_resizing_setting_update' ), 10, 2 );
 
 		add_action( 'wp_ajax_smush_track_deactivate', array( $this, 'ajax_track_deactivation_survey' ) );
 		add_action( 'wp_ajax_smush_analytics_track_event', array( $this, 'ajax_handle_track_request' ) );
@@ -76,12 +92,17 @@ class Product_Analytics_Controller {
 		add_action( 'wp_smush_bulk_smush_dead', array( $this, 'track_bulk_smush_background_process_death' ) );
 		add_action( 'wp_smush_config_applied', array( $this, 'track_config_applied' ) );
 		add_action( 'wp_smush_webp_method_changed', array( $this, 'track_webp_method_changed' ) );
-		add_action( 'wp_smush_webp_status_changed', array( $this, 'track_webp_status_changed' ) );
+		add_action( 'wp_smush_webp_status_changed', array( $this, 'track_next_gen_status_changed' ) );
+		add_action( 'wp_smush_avif_status_changed', array( $this, 'track_next_gen_status_changed' ) );
 		add_action( 'wp_smush_after_delete_all_webp_files', array(
 			$this,
-			'track_webp_after_deleting_all_webp_files',
+			'track_deleting_all_next_gen_files',
+		) );
+		add_action( 'wp_smush_after_delete_all_avif_files', array( $this,
+			'track_deleting_all_next_gen_files',
 		) );
 		add_action( 'wp_ajax_smush_toggle_webp_wizard', array( $this, 'track_webp_reconfig' ), - 1 );
+		add_action( 'shutdown', array( $this, 'maybe_track_next_gen_format_changed' ) );
 
 		$identifier          = $this->scan_background_process->get_identifier();
 		$scan_started_action = "{$identifier}_started";
@@ -102,6 +123,8 @@ class Product_Analytics_Controller {
 		add_action( 'wp_smush_bulk_smush_stuck', array( $this, 'track_bulk_smush_progress_stuck' ) );
 
 		add_action( 'wp_smush_lazy_load_updated', array( $this, 'track_lazy_load_settings_updated' ), 10, 2 );
+
+		add_action( 'wp_smush_bulk_restore_completed', array( $this, 'track_bulk_restore_completed' ) );
 	}
 
 	private function track( $event, $properties = array() ) {
@@ -123,23 +146,34 @@ class Product_Analytics_Controller {
 	}
 
 	private function maybe_track_feature_toggle( array $settings ) {
+		$has_tracked = false;
 		foreach ( $settings as $setting_key => $setting_value ) {
 			$handler = "track_{$setting_key}_feature_toggle";
 			if ( method_exists( $this, $handler ) ) {
 				call_user_func( array( $this, $handler ), $setting_value );
 
-				return true;
+				$has_tracked = true;
 			}
 		}
 
-		return false;
+		return $has_tracked;
 	}
 
 	private function remove_unchanged_settings( $old_settings, $settings ) {
+		$default_settings  = $this->settings->get_defaults();
+		$not_null_callback = function ( $value ) {
+			return ! is_null( $value );
+		};
+
+		$old_settings = array_filter( $old_settings, $not_null_callback );
+		$old_settings = array_merge( $default_settings, $old_settings );
+
+		$settings = array_filter( $settings, $not_null_callback );
+		$settings = array_merge( $default_settings, $settings );
+
 		$changed = array();
 		foreach ( $settings as $setting_key => $setting_value ) {
 			$old_setting_value = isset( $old_settings[ $setting_key ] ) ? $old_settings[ $setting_key ] : '';
-			$setting_value     = isset( $setting_value ) ? $setting_value : '';
 			if ( $old_setting_value !== $setting_value ) {
 				$changed[ $setting_key ] = $setting_value;
 			}
@@ -150,13 +184,14 @@ class Product_Analytics_Controller {
 
 	public function get_bulk_properties() {
 		$bulk_property_labels = array(
-			'auto'       => 'Automatic Compression',
-			'strip_exif' => 'Metadata',
-			'resize'     => 'Resize Original Images',
-			'original'   => 'Compress original images',
-			'backup'     => 'Backup original images',
-			'png_to_jpg' => 'Auto-convert PNGs to JPEGs (lossy)',
-			'no_scale'   => 'Disable scaled images',
+			'auto'             => 'Automatic Compression',
+			'strip_exif'       => 'Metadata',
+			'resize'           => 'Resize Original Images',
+			'original'         => 'Compress original images',
+			'backup'           => 'Backup original images',
+			'png_to_jpg'       => 'Auto-convert PNGs to JPEGs (lossy)',
+			'no_scale'         => 'Disable scaled images',
+			'background_email' => 'Email notification',
 		);
 
 		$image_sizes     = Settings::get_instance()->get_setting( 'wp-smush-image_sizes' );
@@ -166,6 +201,7 @@ class Product_Analytics_Controller {
 			'Parallel Processing' => $this->get_parallel_processing_status(),
 			'Smush Type'          => $this->get_smush_type(),
 		);
+
 		foreach ( $bulk_property_labels as $bulk_setting => $bulk_property_label ) {
 			$property_value                          = Settings::get_instance()->get( $bulk_setting )
 				? 'Enabled'
@@ -180,8 +216,16 @@ class Product_Analytics_Controller {
 		return defined( 'WP_SMUSH_PARALLEL' ) && WP_SMUSH_PARALLEL ? 'Enabled' : 'Disabled';
 	}
 
-	private function get_smush_type() {
-		return $this->settings->is_webp_module_active() ? 'WebP' : 'Classic';
+	private function get_smush_type(): string {
+		if ( $this->settings->is_webp_module_active() ) {
+			return 'WebP';
+		}
+
+		if ( $this->settings->is_avif_module_active() ) {
+			return 'AVIF';
+		}
+
+		return 'Classic';
 	}
 
 	private function get_current_lossy_level_label() {
@@ -202,8 +246,24 @@ class Product_Analytics_Controller {
 		return $this->track_feature_toggle( $setting_value, 'Image Resize Detection' );
 	}
 
-	private function track_webp_mod_feature_toggle( $setting_value ) {
-		return $this->track_feature_toggle( $setting_value, 'Local WebP' );
+	protected function track_webp_mod_feature_toggle( $setting_value ) {
+		if ( $this->is_switching_next_gen_format() ) {
+			return;
+		}
+
+		return $this->track_feature_toggle( $setting_value, 'Next-Gen' );
+	}
+
+	protected function track_avif_mod_feature_toggle( $setting_value ) {
+		if ( $this->is_switching_next_gen_format() ) {
+			return;
+		}
+
+		return $this->track_feature_toggle( $setting_value, 'Next-Gen' );
+	}
+
+	private function is_switching_next_gen_format() {
+		return did_action( 'wp_smush_next_gen_before_format_switch' );
 	}
 
 	private function track_cdn_feature_toggle( $setting_value ) {
@@ -214,6 +274,10 @@ class Product_Analytics_Controller {
 		$this->track_lazy_load_feature_updated_on_toggle( $setting_value );
 
 		return $this->track_feature_toggle( $setting_value, 'Lazy Load' );
+	}
+
+	protected function track_preload_images_feature_toggle( $setting_value ) {
+		return $this->track_feature_toggle( $setting_value, 'Preload Critical Images' );
 	}
 
 	private function track_lazy_load_feature_updated_on_toggle( $activate ) {
@@ -239,10 +303,10 @@ class Product_Analytics_Controller {
 		return true;
 	}
 
-	private function get_webp_referer() {
+	private function get_next_gen_referer() {
 		$page                   = $this->get_referer_page();
 		$webp_configuration     = Webp_Configuration::get_instance();
-		$is_user_on_wizard_webp = 'smush-webp' === $page
+		$is_user_on_wizard_webp = 'smush-next-gen' === $page
 		                          && $webp_configuration->should_show_wizard()
 		                          && ! $webp_configuration->direct_conversion_enabled();
 
@@ -254,7 +318,8 @@ class Product_Analytics_Controller {
 	}
 
 	private function identify_referrer() {
-		$onboarding_request = ! empty( $_REQUEST['action'] ) && 'smush_setup' === $_REQUEST['action'];
+		$wizard_setup_actions = array( 'smush_setup', 'smush_free_setup' );
+		$onboarding_request   = ! empty( $_REQUEST['action'] ) && in_array( $_REQUEST['action'], $wizard_setup_actions, true );
 		if ( $onboarding_request ) {
 			return 'Wizard';
 		}
@@ -263,10 +328,9 @@ class Product_Analytics_Controller {
 		$triggered_from = array(
 			'smush'              => 'Dashboard',
 			'smush-bulk'         => 'Bulk Smush',
-			'smush-directory'    => 'Directory Smush',
-			'smush-lazy-load'    => 'Lazy Load',
+			'smush-lazy-preload' => 'Lazy Load',
 			'smush-cdn'          => 'CDN',
-			'smush-webp'         => 'Local WebP',
+			'smush-next-gen'     => 'Next-Gen Formats',
 			'smush-integrations' => 'Integrations',
 			'smush-settings'     => 'Settings',
 		);
@@ -287,6 +351,20 @@ class Product_Analytics_Controller {
 			}
 		}
 
+		if ( isset( $settings[ Settings::NEXT_GEN_CDN_KEY ] ) ) {
+			$cdn_next_gen_conversions_mode = $this->settings->sanitize_cdn_next_gen_conversion_mode( $settings[ Settings::NEXT_GEN_CDN_KEY ] );
+			$cdn_next_gen_conversions      = array(
+				Settings::NONE_CDN_MODE => 'None',
+				Settings::WEBP_CDN_MODE => 'WebP',
+				Settings::AVIF_CDN_MODE => 'AVIF',
+			);
+			if ( ! isset( $cdn_next_gen_conversions[ $cdn_next_gen_conversions_mode ] ) ) {
+				$cdn_next_gen_conversions_mode = Settings::NONE_CDN_MODE;
+			}
+
+			$cdn_properties['Next-Gen Conversions'] = $cdn_next_gen_conversions[ $cdn_next_gen_conversions_mode ];
+		}
+
 		if ( $cdn_properties ) {
 			$this->track( 'CDN Updated', $cdn_properties );
 
@@ -299,8 +377,7 @@ class Product_Analytics_Controller {
 	private function cdn_property_labels() {
 		return array(
 			'background_images' => 'Background Images',
-			'auto_resize'       => 'Automatic Resizing',
-			'webp'              => 'WebP Conversions',
+			'cdn_dynamic_sizes' => 'Dynamic Image Sizing',
 			'rest_api_support'  => 'Rest API',
 		);
 	}
@@ -371,15 +448,14 @@ class Product_Analytics_Controller {
 
 	private function get_bulk_smush_stats() {
 		$global_stats = WP_Smush::get_instance()->core()->get_global_stats();
-		$array_util   = new Array_Utils();
 
 		return array(
-			'Total Savings'                 => $this->convert_to_megabytes( (int) $array_util->get_array_value( $global_stats, 'savings_bytes' ) ),
-			'Total Images'                  => (int) $array_util->get_array_value( $global_stats, 'count_images' ),
-			'Media Optimization Percentage' => (float) $array_util->get_array_value( $global_stats, 'percent_optimized' ),
-			'Percentage of Savings'         => (float) $array_util->get_array_value( $global_stats, 'savings_percent' ),
-			'Images Resized'                => (int) $array_util->get_array_value( $global_stats, 'count_resize' ),
-			'Resize Savings'                => $this->convert_to_megabytes( (int) $array_util->get_array_value( $global_stats, 'savings_resize' ) ),
+			'Total Savings'                 => $this->convert_to_megabytes( (int) $this->array_utils->get_array_value( $global_stats, 'savings_bytes' ) ),
+			'Total Images'                  => (int) $this->array_utils->get_array_value( $global_stats, 'count_images' ),
+			'Media Optimization Percentage' => (float) $this->array_utils->get_array_value( $global_stats, 'percent_optimized' ),
+			'Percentage of Savings'         => (float) $this->array_utils->get_array_value( $global_stats, 'savings_percent' ),
+			'Images Resized'                => (int) $this->array_utils->get_array_value( $global_stats, 'count_resize' ),
+			'Resize Savings'                => $this->convert_to_megabytes( (int) $this->array_utils->get_array_value( $global_stats, 'savings_resize' ) ),
 		);
 	}
 
@@ -646,101 +722,151 @@ class Product_Analytics_Controller {
 		return $this->scanner_slice_size;
 	}
 
-	public function track_toggle_local_webp_fallback( $old_settings, $settings ) {
-		if (
-			empty( $settings['usage'] ) ||
-			empty( $settings['webp_mod'] ) ||
-			did_action( 'wp_smush_webp_status_changed' ) // Tracked.
-		) {
+	public function track_toggle_next_gen_fallback( $old_settings, $settings ) {
+		if ( empty( $settings['usage'] ) ) {
 			return;
 		}
 
-		$modified_settings = $this->remove_unchanged_settings( $old_settings, $settings );
-		if ( ! isset( $modified_settings['webp_fallback'] ) ) {
+		$webp_activated     = ! empty( $settings['webp_mod'] );
+		$avif_activated     = ! empty( $settings['avif_mod'] );
+		$next_gen_activated = $webp_activated || $avif_activated;
+		// Do not track when Next Gen is not activated.
+		if ( ! $next_gen_activated ) {
 			return;
 		}
 
-		$modify_type               = ! empty( $modified_settings['webp_fallback'] ) ? 'browser_support_on' : 'browser_support_off';
-		$direct_conversion_enabled = ! empty( $settings['webp_direct_conversion'] );// WebP method might or might not be changed.
-		$webp_method               = $direct_conversion_enabled ? 'direct' : 'server_redirect';
-		$local_webp_properites     = $this->get_local_webp_properties();
+		$modified_settings         = $this->remove_unchanged_settings( $old_settings, $settings );
+		$next_gen_fallback_changed = isset( $modified_settings['webp_fallback'] ) || isset( $modified_settings['avif_fallback'] );
+		// Do not track if both WebP and AVIF fallbacks are not changed.
+		if ( ! $next_gen_fallback_changed ) {
+			return;
+		}
+
+		$webp_fallback_activated = ! empty( $settings['webp_fallback'] );
+		$avif_fallback_activated = ! empty( $settings['avif_fallback'] );
+		// Do not track if both WebP and AVIF fallbacks have the same status while switching the Next-Gen formats.
+		if ( $this->is_switching_next_gen_format() && ( $webp_fallback_activated === $avif_fallback_activated ) ) {
+			return;
+		}
+
+		$next_gen_fallback_activated = ( $webp_activated && $webp_fallback_activated )
+										|| ( $avif_activated && $avif_fallback_activated );
+
+		$update_type         = $next_gen_fallback_activated ? 'browser_support_on' : 'browser_support_off';
+		$next_gen_properties = $this->get_next_gen_properties();
+		$next_gen_method     = 'avif_direct';
+		if ( $webp_activated ) {
+			$direct_conversion_enabled = ! empty( $settings['webp_direct_conversion'] );// WebP method might or might not be changed.
+			$next_gen_method           = $direct_conversion_enabled ? 'webp_direct' : 'server_redirect';
+		}
+
 		$this->track(
-			'local_webp_updated',
+			'next_gen_updated',
 			array_merge(
-				$local_webp_properites,
+				$next_gen_properties,
 				array(
-					'update_type' => 'modify',
-					'modify_type' => $modify_type,
-					'Method'      => $webp_method,
+					'update_type' => $update_type,
+					'Method'      => $next_gen_method,
 				)
 			)
 		);
 	}
 
-	public function track_webp_after_deleting_all_webp_files() {
-		$local_webp_properites = $this->get_local_webp_properties();
+	public function track_deleting_all_next_gen_files() {
+		$auto_deleting_old_next_gen_files = wp_doing_cron();
+		if ( $auto_deleting_old_next_gen_files ) {
+			return;
+		}
+
+		$next_gen_properties = $this->get_next_gen_properties();
 		$this->track(
-			'local_webp_updated',
+			'next_gen_updated',
 			array_merge(
-				$local_webp_properites,
+				$next_gen_properties,
 				array(
-					'update_type' => 'modify',
-					'modify_type' => 'delete_files',
+					'update_type' => 'delete_files',
 				)
 			)
 		);
 	}
 
 	public function track_webp_method_changed() {
-		$local_webp_properites = $this->get_local_webp_properties();
+		$next_gen_properties = $this->get_next_gen_properties();
 		$this->track(
-			'local_webp_updated',
+			'next_gen_updated',
 			array_merge(
-				$local_webp_properites,
+				$next_gen_properties,
 				array(
-					'update_type' => 'switch_method',
-					'modify_type' => 'na',
+					'update_type' => 'switch_webp_method',
 				)
 			)
 		);
 	}
 
-	public function track_webp_status_changed() {
-		$local_webp_properites = $this->get_local_webp_properties();
-		$update_type           = $this->settings->is_webp_module_active() ? 'activate' : 'deactivate';
+	public function track_next_gen_status_changed() {
+		if ( $this->is_switching_next_gen_format() ) {
+			return;
+		}
+
+		$next_gen_properties = $this->get_next_gen_properties();
+		$update_type         = $this->next_gen_manager->is_active() ? 'activate' : 'deactivate';
 		$this->track(
-			'local_webp_updated',
+			'next_gen_updated',
 			array_merge(
-				$local_webp_properites,
+				$next_gen_properties,
 				array(
 					'update_type' => $update_type,
-					'modify_type' => 'na',
 				)
 			)
 		);
 	}
 
-	private function get_local_webp_properties() {
-		$location = $this->get_webp_referer();
-		// Directly check webp_direct_conversion option to identify webp method even webp module is disabled.
-		$direct_conversion_enabled = $this->settings->get( 'webp_direct_conversion' );
-		$webp_method               = $direct_conversion_enabled ? 'direct' : 'server_redirect';
-		$webp_status_notice        = $this->get_webp_status_notice();
+	/**
+	 * Note: Uses shutdown action to ensure all new settings are updated.
+	 */
+	public function maybe_track_next_gen_format_changed() {
+		$switched_next_gen_format = did_action( 'wp_smush_next_gen_after_format_switch' );
+		if ( ! $switched_next_gen_format ) {
+			return;
+		}
+
+		$next_gen_properties = $this->get_next_gen_properties();
+		$this->track(
+			'next_gen_updated',
+			array_merge(
+				$next_gen_properties,
+				array(
+					'update_type' => 'switch_next_gen_format',
+				)
+			)
+		);
+	}
+
+	private function get_next_gen_properties() {
+		$location                    = $this->get_next_gen_referer();
+		$active_format_configuration = $this->next_gen_manager->get_active_format_configuration();
+		$next_gen_status_notice      = $this->get_next_gen_status_notice();
+		$next_gen_method             = 'avif_direct';
+		if ( Webp_Configuration::FORMAT_KEY === $active_format_configuration->get_format_key() ) {
+			// Directly check webp_direct_conversion option to identify webp method even webp module is disabled.
+			$direct_conversion_enabled = $this->settings->get( 'webp_direct_conversion' );
+			$next_gen_method           = $direct_conversion_enabled ? 'webp_direct' : 'webp_server';
+		}
 
 		return array(
 			'Location'      => $location,
-			'Method'        => $webp_method,
-			'status_notice' => $webp_status_notice,
+			'Method'        => $next_gen_method,
+			'status_notice' => $next_gen_status_notice,
 		);
 	}
 
-	private function get_webp_status_notice() {
-		if ( ! $this->settings->is_webp_module_active() ) {
+	private function get_next_gen_status_notice() {
+		if ( ! $this->next_gen_manager->is_active() ) {
 			return 'na';
 		}
 
-		$webp_configuration = Webp_Configuration::get_instance();
-		if ( ! $webp_configuration->is_configured() ) {
+		if ( ! $this->next_gen_manager->is_configured() ) {
+			$webp_configuration = Webp_Configuration::get_instance();
 			return $webp_configuration->server_configuration()->get_configuration_error_code();
 		}
 
@@ -765,14 +891,13 @@ class Product_Analytics_Controller {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		$local_webp_properites = $this->get_local_webp_properties();
+		$next_gen_properties = $this->get_next_gen_properties();
 		$this->track(
-			'local_webp_updated',
+			'next_gen_updated',
 			array_merge(
-				$local_webp_properites,
+				$next_gen_properties,
 				array(
-					'update_type' => 'modify',
-					'modify_type' => 'reconfig',
+					'update_type' => 'reconfig',
 				)
 			)
 		);
@@ -883,7 +1008,9 @@ class Product_Analytics_Controller {
 	private function allow_to_track( $event_name, $properties ) {
 		$trackable_events   = array(
 			'Setup Wizard'     => true,
+			'Setup Wizard New' => true,
 			'smush_pro_upsell' => isset( $properties['Location'] ) && 'wizard' === $properties['Location'],
+			'Disconnect Site'  => true,
 		);
 		$is_trackable_event = ! empty( $trackable_events[ $event_name ] );
 
@@ -1002,8 +1129,9 @@ class Product_Analytics_Controller {
 		$properties = array_merge(
 			$properties,
 			array(
-				'active_features' => $this->get_active_features(),
-				'active_plugins'  => $this->get_active_plugins(),
+				'active_features'      => $this->get_active_features(),
+				'active_plugins'       => $this->get_active_plugins(),
+				'Smush API Connection' => $this->get_api_connection_status(),
 			)
 		);
 
@@ -1015,16 +1143,30 @@ class Product_Analytics_Controller {
 		wp_send_json_success();
 	}
 
+	private function get_api_connection_status() {
+		if ( Hub_Connector::is_logged_in() ) {
+			return 'connected';
+		}
+
+		if ( Membership::get_instance()->is_api_hub_access_required() ) {
+			return 'disconnected';
+		}
+
+		return 'na';
+	}
+
 	private function get_active_features() {
 		$lossy_level           = $this->settings->get_lossy_level_setting();
 		$cdn_module_activated  = CDN_Helper::get_instance()->is_cdn_active();
 		$webp_module_activated = ! $cdn_module_activated && $this->settings->is_webp_module_active();
+		$avif_module_activated = ! $cdn_module_activated && $this->settings->is_avif_module_active();
 		$webp_direct_activated = $webp_module_activated && $this->settings->is_webp_direct_conversion_active();
 		$webp_server_activated = $webp_module_activated && ! $webp_direct_activated;
 
 		$features = array(
 			'lazy_load'        => $this->settings->is_lazyload_active(),
 			'cdn'              => $cdn_module_activated,
+			'avif'             => $avif_module_activated,
 			'webp_direct'      => $webp_direct_activated,
 			'webp_server'      => $webp_server_activated,
 			'smush_basic'      => Settings::LEVEL_LOSSLESS === $lossy_level,
@@ -1035,6 +1177,7 @@ class Product_Analytics_Controller {
 			'gravity_forms'    => $this->settings->get( 'gform' ),
 			'nextgen_gallery'  => $this->settings->get( 'nextgen' ),
 			'gutenberg_blocks' => $this->settings->get( 'gutenberg' ),
+			'preload_images'   => $this->settings->is_lcp_preload_enabled(),
 		);
 
 		return array_keys( array_filter( $features ) );
@@ -1093,16 +1236,56 @@ class Product_Analytics_Controller {
 		);
 	}
 
+	public function track_resizing_setting_update( $old_settings, $settings ) {
+		if ( empty( $settings['usage'] ) ) {
+			return;
+		}
+
+		$changed_settings  = $this->remove_unchanged_settings( $old_settings, $settings );
+		if ( 'Lazy Load' !== $this->identify_referrer() ) {
+			return;
+		}
+
+		$modified_settings = 'na';
+
+		if ( ! empty( $changed_settings ) ) {
+			$modified_settings_map = array(
+				'auto_resizing'    => 'auto_resizing',
+				'image_dimensions' => 'image_dimensions',
+			);
+
+			$modified_settings = array_intersect_key( $modified_settings_map, $changed_settings );
+			$modified_settings = ! empty( $modified_settings ) ? array_values( $modified_settings ) : 'na';
+		}
+
+		$properties = array(
+			'update_type'             => 'modify',
+			'modified_settings'        => $modified_settings,
+			'auto_resizing_status'    => $settings['auto_resizing'] ? 'Enabled' : 'Disabled',
+			'image_dimensions_status' => $settings['image_dimensions'] ? 'Enabled' : 'Disabled',
+		);
+		$this->track_lazy_load_updated(
+			$properties,
+			$this->settings->get_setting( 'wp-smush-lazy_load' )
+		);
+	}
+
 	private function track_lazy_load_updated( $properties, $settings ) {
 		$exclusion_enabled         = $this->is_lazy_load_exclusion_enabled( $settings );
 		$native_lazyload_enabled   = ! empty( $settings['native'] );
 		$noscript_fallback_enabled = ! empty( $settings['noscript_fallback'] );
+		$embed_content             = empty( $settings['format']['iframe'] )
+			? 'Disabled'
+			: ( empty( $settings['format']['embed_video'] ) ? 'Enabled' : 'Preview Images' );
 		$properties                = array_merge(
 			array(
-				'Location'           => $this->identify_referrer(),
-				'exclusions'         => $exclusion_enabled ? 'Enabled' : 'Disabled',
-				'native_lazy_status' => $native_lazyload_enabled ? 'Enabled' : 'Disabled',
-				'noscript_status'    => $noscript_fallback_enabled ? 'Enabled' : 'Disabled',
+				'Location'                => $this->identify_referrer(),
+				'embed_content'           => $embed_content,
+				'exclusions'              => $exclusion_enabled ? 'Enabled' : 'Disabled',
+				'native_lazy_status'      => $native_lazyload_enabled ? 'Enabled' : 'Disabled',
+				'noscript_status'         => $noscript_fallback_enabled ? 'Enabled' : 'Disabled',
+				'auto_resizing_status'    => $this->settings->get( 'auto_resizing' ) ? 'Enabled' : 'Disabled',
+				'image_dimensions_status' => $this->settings->get( 'image_dimensions' ) ? 'Enabled' : 'Disabled',
 			),
 			$properties
 		);
@@ -1123,5 +1306,40 @@ class Product_Analytics_Controller {
 
 		// By default, we activated for all post types, so this option is changed when any post type is unchecked.
 		return in_array( false, $included_post_types, true );
+	}
+
+	/**
+	 * Track the completion of a bulk restore process.
+	 *
+	 * @param array $args Restore arguments.
+	 */
+	public function track_bulk_restore_completed( $args ) {
+		$this->track(
+			'Bulk Restore Triggered',
+			$this->filter_bulk_restore_triggered_properties(
+				array(
+					'Type'                  => 'Bulk',
+					'Total images restored' => (int) $this->array_utils->get_array_value( $args, 'restored_count', 0 ),
+					'Total images'          => (int) $this->array_utils->get_array_value( $args, 'total_count', 0 ),
+					'Backup not found'      => (int) $this->array_utils->get_array_value( $args, 'missing_backup_count', 0 ),
+				)
+			)
+		);
+	}
+
+	/**
+	 * Filter the properties for the bulk restore triggered event.
+	 *
+	 * @param mixed $properties Properties.
+	 *
+	 * @return array
+	 */
+	public function filter_bulk_restore_triggered_properties( array $properties ) {
+		return array_merge(
+			$properties,
+			array(
+				'Backup Status' => $this->settings->is_backup_active() ? 'Enabled' : 'Disabled',
+			)
+		);
 	}
 }

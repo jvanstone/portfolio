@@ -11,7 +11,6 @@ use Smush\Core\Threads\Thread_Safe_Options;
 use Smush\Core\Timer;
 use Smush\Core\Upload_Dir;
 use Smush_Vendor\GuzzleHttp\Client;
-use Smush_Vendor\GuzzleHttp\Exception\GuzzleException;
 use WP_Error;
 
 /**
@@ -22,6 +21,7 @@ class Smusher {
 	const IMAGE_NOT_SAVED_FROM_URL = 'image_not_saved_from_url';
 	const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024;
 	const ERROR_TIME_OUT = 'time_out';
+	const ERROR_GATEWAY_TIME_OUT = 'gateway_time_out';
 	const ERROR_POSTING_TO_API = 'error_posting_to_api';
 	const RESPONSE_CODE_NON_200 = 'response_code_non_200';
 	const OPTION_ID_SMUSH_ERROR_COUNTS = 'wp_smush_error_counts';
@@ -322,7 +322,7 @@ class Smusher {
 			}
 
 			$target_file_name = basename( $target_file_path );
-			$type             = wp_get_image_mime( $temp_name );
+			$type             = $this->wp_get_image_mime( $temp_name );
 			if ( ! str_starts_with( $type, 'image/' ) ) {
 				$error = new WP_Error(
 					'invalid-file-type',
@@ -362,7 +362,7 @@ class Smusher {
 			$input_stream = $response->getBody()->detach();
 
 			return $this->save_from_resource( $input_stream, $target_file_path, $file_md5, $chunk_size );
-		} catch ( GuzzleException $exception ) {
+		} catch ( \Exception $exception ) {
 			$this->logger->error( sprintf( 'Error fetching image from URL: %s', $exception->getMessage() ) );
 
 			$code = $exception->getCode();
@@ -492,7 +492,18 @@ class Smusher {
 			if ( ! empty( $non_200_json->data ) ) {
 				// We got a pre-formatted error from the API
 				$error_message = $non_200_json->data;
-			} else {
+			} else if ( strpos( wp_remote_retrieve_response_message( $response ), 'Gateway Timeout' ) !== false ) {
+				$error->add(
+					self::ERROR_GATEWAY_TIME_OUT,
+					esc_html__( 'The request is taking longer than expected. Please check back in a few moments.', 'wp-smushit' ),
+					array(
+						'original_code'    => $response_code,
+						'original_message' => wp_remote_retrieve_response_message( $response ),
+					)
+				);
+
+				return $error;
+			}else {
 				// Make an error from the response message
 				$error_message = sprintf(
 				/* translators: 1: Error code, 2: Error message. */
@@ -639,10 +650,11 @@ class Smusher {
 	 * @return void
 	 */
 	private function add_error( $size_key, $code, $message, $data = array() ) {
+		$size_key_format = empty( $size_key ) ? '' : "[$size_key] ";
 		// Log the error
-		$this->logger->error( "[$size_key] $message" );
+		$this->logger->error( $size_key_format . $message );
 		// Add the error
-		$this->errors->add( $code, "[$size_key] $message" );
+		$this->errors->add( $code, $size_key_format . $message );
 
 		if ( ! empty( $data ) ) {
 			$this->errors->add_data( $data, $code );
@@ -803,7 +815,7 @@ class Smusher {
 				$original_code,
 				$original_message,
 				array(
-					'Smush Type'   => $this->get_type_label(),
+					'Smush Type'   => $this->get_type_label() == 'Avif' ? 'AVIF' : $this->get_type_label(),
 					'Time Elapsed' => $time_elapsed,
 				)
 			);
@@ -850,7 +862,76 @@ class Smusher {
 	}
 
 	public function reset_error_counts() {
-		delete_site_option( Smusher::OPTION_ID_SMUSH_ERROR_COUNTS );
+		$this->thread_safe_options->delete_site_option( Smusher::OPTION_ID_SMUSH_ERROR_COUNTS );
+	}
+
+	/**
+	 * @param $file
+	 *
+	 * @return string
+	 * @see \wp_get_image_mime()
+	 */
+	function wp_get_image_mime( $file ) {
+		/*
+		 * Use exif_imagetype() to check the mimetype if available or fall back to
+		 * getimagesize() if exif isn't available. If either function throws an Exception
+		 * we assume the file could not be validated.
+		 */
+		try {
+			if ( is_callable( 'exif_imagetype' ) ) {
+				$imagetype = exif_imagetype( $file );
+				$mime      = ( $imagetype ) ? image_type_to_mime_type( $imagetype ) : false;
+			} elseif ( function_exists( 'getimagesize' ) ) {
+				// Don't silence errors when in debug mode, unless running unit tests.
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG
+				     && ! defined( 'WP_RUN_CORE_TESTS' )
+				) {
+					// Not using wp_getimagesize() here to avoid an infinite loop.
+					$imagesize = getimagesize( $file );
+				} else {
+					$imagesize = @getimagesize( $file );
+				}
+
+				$mime = ( isset( $imagesize['mime'] ) ) ? $imagesize['mime'] : false;
+			} else {
+				$mime = false;
+			}
+
+			if ( false !== $mime ) {
+				return $mime;
+			}
+
+			$magic = file_get_contents( $file, false, null, 0, 12 );
+
+			if ( false === $magic ) {
+				return false;
+			}
+
+			/*
+			 * Add WebP fallback detection when image library doesn't support WebP.
+			 * Note: detection values come from LibWebP, see
+			 * https://github.com/webmproject/libwebp/blob/master/imageio/image_dec.c#L30
+			 */
+			$magic = bin2hex( $magic );
+			if (
+				// RIFF.
+				( str_starts_with( $magic, '52494646' ) ) &&
+				// WEBP.
+				( 16 === strpos( $magic, '57454250' ) )
+			) {
+				$mime = 'image/webp';
+			}
+
+			/** Custom Code Start */
+			if ( strpos( $magic, '6674797061766966' ) !== false ) {
+				$mime = 'image/avif';
+			}
+			/** Custom Code End */
+		} catch ( Exception $e ) {
+			$mime = false;
+		}
+
+		return $mime;
 	}
 
 	/**

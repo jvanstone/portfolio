@@ -19,10 +19,20 @@
 	/**
 	 * Lazy load page.
 	 */
-	$( 'form#smush-lazy-load-form' ).on( 'submit', function( e ) {
+	const lazyLoadForm = $( 'form#smush-lazy-preload-form' );
+	lazyLoadForm.on( 'submit', function( e ) {
 		e.preventDefault();
+		const tabField = $( this ).find( '[name="tab"]' );
+		const isLazyLoadPage = tabField.length && 'lazy_load' === tabField.val();
+
 		$( '#save-settings-button' ).addClass( 'sui-button-onload-text' );
-		saveSettings( $( this ).serialize(), 'lazy-load' );
+		saveSettings( $( this ).serialize(), isLazyLoadPage ? 'lazy-load' : 'preload' );
+	} );
+
+	lazyLoadForm.on( 'keydown', function( e ) {
+		if ( e.key === 'Enter' ) {
+			lazyLoadForm.trigger( 'submit' );
+		}
 	} );
 
 	/**
@@ -35,12 +45,12 @@
 	} );
 
 	/**
-	 * Local WebP page.
+	 * Next-Gen page.
 	 */
-	$( 'form#smush-webp-form' ).on( 'submit', function( e ) {
+	$( 'form#smush-next-gen-form' ).on( 'submit', function( e ) {
 		e.preventDefault();
 		$( '#save-settings-button' ).addClass( 'sui-button-onload-text' );
-		saveSettings( $( this ).serialize(), 'webp' );
+		saveSettings( $( this ).serialize(), 'next-gen' );
 	} );
 
 	/**
@@ -98,7 +108,7 @@
 
 		xhr.send( 'page=' + page + '&' + settings + '&_ajax_nonce=' + wp_smush_msgs.nonce );
 	}
-	
+
 	function triggerSavedSmushSettingsEvent( status ) {
 		document.dispatchEvent(
 			new CustomEvent( 'onSavedSmushSettings', {
@@ -158,25 +168,150 @@
 			.getElementById( otherClass )
 			.parentNode.classList.remove( 'active' );
 	} );
-
+	
+	/**
+	 * Handle highlighting notice display based on detection checkbox state.
+	 */
+	function handleHighlightingNotice( isAfterSave = false ) {
+		const detectionEnabled = $( '#detection' ).is( ':checked' );
+		const $notice          = $( '.smush-highlighting-notice' );
+		const $warning         = $( '.smush-highlighting-warning' );
+		
+		if ( ! detectionEnabled ) {
+			$notice.hide();
+			$warning.hide();
+			return;
+		}
+		
+		if ( isAfterSave ) {
+			$notice.show();
+			$warning.hide();
+		} else {
+			// Show warning only if notice isn't visible yet.
+			const noticeVisible = $notice.is( ':visible' ) || $notice.css( 'display' ) !== 'none';
+			if ( noticeVisible ) {
+				$notice.show();
+				$warning.hide();
+			} else {
+				$notice.hide();
+				$warning.show();
+			}
+		}
+	}
+	
 	/**
 	 * Handle auto-detect checkbox toggle, to show/hide highlighting notice.
 	 */
-	$( 'input#detection' ).on( 'click', function() {
-		const noticeDiv = $( '.smush-highlighting-notice' );
-		const warningDiv = $( '.smush-highlighting-warning' );
-
-		// Setting enabled.
-		if ( $( this ).is( ':checked' ) ) {
-			// Highlighting is already active and setting not saved.
-			if ( noticeDiv.length > 0 ) {
-				noticeDiv.show();
-			} else {
-				warningDiv.show();
-			}
-		} else {
-			noticeDiv.hide();
-			warningDiv.hide();
-		}
+	$( 'input#detection' ).on( 'click', function () {
+		handleHighlightingNotice( false );
 	} );
+	
+	/**
+	 * Handle settings saved event.
+	 */
+	$( document ).on( 'onSavedSmushSettings', function () {
+		handleHighlightingNotice( true );
+	} );
+
+	/**
+	 * Form notice via query var smush-notice handler.
+	 */
+	const formNoticeHandler = () => {
+		if ( ! window.URL || ! window.URLSearchParams ) {
+			return;
+		}
+
+		const url = new URL( window.location );
+		const noticeKey = url.searchParams.get( 'smush-notice' );
+		if ( ! noticeKey ) {
+			return;
+		}
+
+		document.dispatchEvent(
+			new CustomEvent( `on-smush-${ noticeKey }-notice` )
+		);
+
+		// Remove the smush-notice query parameter.
+		url.searchParams.delete( 'smush-notice' );
+		window.history.replaceState( {}, document.title, url.toString() );
+	};
+
+	formNoticeHandler();
+
+	// Handle toggle fields.
+	const toggleFieldVisibility = ( fieldVisibilitySettings, fieldWrapperClassName ) => {
+		for ( const fieldName in fieldVisibilitySettings ) {
+			const field = document.querySelector( `[name="${ fieldName }"]` );
+			if ( ! field ) {
+				continue;
+			}
+
+			const fieldWrapper = field.closest( `.${ fieldWrapperClassName }` );
+			if ( ! fieldWrapper ) {
+				continue;
+			}
+
+			if ( 'show' === fieldVisibilitySettings[ fieldName ] ) {
+				fieldWrapper.classList.remove( 'sui-hidden' );
+			} else {
+				fieldWrapper.classList.add( 'sui-hidden' );
+			}
+		}
+	};
+
+	const toggleFieldsHandler = () => {
+		const settingsForm = document.querySelector( '.wp-smush-settings-form' );
+		if ( ! settingsForm ) {
+			return;
+		}
+
+		const fieldWrapperClassName = 'sui-box-settings-row';
+		const conditionalFields = settingsForm.querySelectorAll( '[data-toggle-fields]' );
+		if ( conditionalFields ) {
+			conditionalFields.forEach( function( conditionalField ) {
+				const fieldVisibilitySettings = JSON.parse( conditionalField.dataset.toggleFields );
+				if ( ! fieldVisibilitySettings && 'object' !== typeof fieldVisibilitySettings ) {
+					return;
+				}
+
+				conditionalField.addEventListener( 'change', function() {
+					if ( ! this.checked ) {
+						return;
+					}
+
+					toggleFieldVisibility( fieldVisibilitySettings, fieldWrapperClassName );
+				} );
+			} );
+		}
+
+		if ( window.SUI?.tabs ) {
+			window.SUI.tabs(
+				{
+					callback( tab, panel ) {
+						const conditionalField = tab.next( '[data-toggle-fields]' );
+						if ( conditionalField.length ) {
+							const fieldVisibilitySettings = conditionalField.data( 'toggle-fields' );
+							if ( fieldVisibilitySettings && 'object' === typeof fieldVisibilitySettings ) {
+								toggleFieldVisibility( fieldVisibilitySettings, fieldWrapperClassName );
+							}
+						}
+
+						const childFields = panel.find( '[data-toggle-fields]' );
+						if ( childFields.length ) {
+							childFields.each( function() {
+								if ( $( this ).is( ':checked' ) ) {
+									const fieldVisibilitySettings = $( this ).data( 'toggle-fields' );
+									if ( fieldVisibilitySettings && 'object' === typeof fieldVisibilitySettings ) {
+										toggleFieldVisibility( fieldVisibilitySettings, fieldWrapperClassName );
+									}
+								}
+							} );
+						}
+					}
+				}
+			);
+		}
+	};
+
+	toggleFieldsHandler();
 }( jQuery ) );

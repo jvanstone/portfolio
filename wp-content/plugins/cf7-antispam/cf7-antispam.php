@@ -4,8 +4,10 @@
  * Description: A trustworthy antispam plugin for Contact Form 7. Simple but effective.
  * Author: Codekraft
  * Text Domain: cf7-antispam
- * Domain Path: /languages/
- * Version: 0.6.3
+ * Domain Path: /languages
+ * Version: 0.7.2
+ * License: GPLv2 or later
+ * Requires Plugins: contact-form-7
  *
  * @package cf7-antispam
  */
@@ -18,7 +20,7 @@ if ( ! defined( 'WPINC' ) ) {
 /* CONSTANTS */
 define( 'CF7ANTISPAM_NAME', 'cf7-antispam' );
 
-define( 'CF7ANTISPAM_VERSION', '0.6.3' );
+define( 'CF7ANTISPAM_VERSION', '0.7.2' );
 
 define( 'CF7ANTISPAM_PLUGIN', __FILE__ );
 
@@ -67,6 +69,7 @@ require_once CF7ANTISPAM_PLUGIN_DIR . '/core/functions.php';
 /**
  * The code that runs during plugin activation.
  */
+/* phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound */
 function activate_cf7_antispam( $network_wide ) {
 	\CF7_AntiSpam\Engine\CF7_AntiSpam_Activator::on_activate( $network_wide );
 }
@@ -79,6 +82,7 @@ register_activation_hook( CF7ANTISPAM_PLUGIN, 'activate_cf7_antispam' );
  *
  * @param int $blog_id - The ID of the new blog.
  */
+/* phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound */
 function on_create_blog( $blog_id ) {
 	if ( is_plugin_active_for_network( 'cf7-antispam/cf7-antispam.php' ) ) {
 		switch_to_blog( $blog_id );
@@ -95,6 +99,7 @@ add_action( 'wpmu_new_blog', 'on_create_blog' );
  *
  * @param array $tables - Array of tables.
  */
+/* phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound */
 function on_delete_blog( $tables ) {
 	global $wpdb;
 	$tables[] = $wpdb->prefix . 'cf7a_wordlist';
@@ -106,6 +111,7 @@ add_filter( 'wpmu_drop_tables', 'on_delete_blog' );
 /**
  * The code that runs during plugin deactivation.
  */
+/* phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound */
 function deactivate_cf7_antispam() {
 	\CF7_AntiSpam\Engine\CF7_AntiSpam_Deactivator::deactivate();
 }
@@ -114,6 +120,7 @@ register_deactivation_hook( CF7ANTISPAM_PLUGIN, 'deactivate_cf7_antispam' );
 /**
  * The code that runs during plugin un-installation.
  */
+/* phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound */
 function uninstall_cf7_antispam() {
 	\CF7_AntiSpam\Engine\CF7_AntiSpam_Uninstaller::uninstall();
 }
@@ -124,6 +131,7 @@ register_uninstall_hook( CF7ANTISPAM_PLUGIN, 'uninstall_cf7_antispam' );
  * Call the integration action to mount our plugin as a component
  * into the intefration page
  */
+/* phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound */
 function cf7_antispam_register_service() {
 	$integration = WPCF7_Integration::get_instance();
 	$integration->add_service(
@@ -131,13 +139,14 @@ function cf7_antispam_register_service() {
 		\CF7_AntiSpam\Core\CF7_Antispam_Service::get_instance()
 	);
 }
-add_action( 'wpcf7_init', 'cf7_antispam_register_service', 1, 0 );
+add_action( 'wpcf7_init', 'cf7_antispam_register_service', 2, 0 );
 
 /**
  * Executes CF7-AntiSpam
  */
+/* phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound */
 function run_cf7a() {
 	$cf7a = new \CF7_AntiSpam\Core\CF7_AntiSpam();
 	$cf7a->run();
 }
-add_action( 'init', 'run_cf7a', 11, 0 );
+add_action( 'init', 'run_cf7a', 11 );

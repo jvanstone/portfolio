@@ -13,25 +13,15 @@ use Smush\App\Admin;
 	<div class="smush-box-image">
 		<img class="sui-image-icon" src="<?php echo esc_url( WP_SMUSH_URL . 'app/assets/images/bulk-smush/cdn-upsell-icon.png' ); ?>"
 		srcset="<?php echo esc_url( WP_SMUSH_URL . 'app/assets/images/bulk-smush/cdn-upsell-icon@2x.png' ); ?> 2x"
-		alt="<?php esc_html_e( 'Smush CDN Icon', 'wp-smushit' ); ?>">
+		alt="<?php esc_html_e( 'CDN upsell Icon', 'wp-smushit' ); ?>">
 		</div>
 	<div class="sui-box-content">
 		<p>
-		<?php
-		printf(
-			/* translators: %d: Number of CDN PoP locations */
-			esc_html__( 'Want to serve images even faster? Get up to 2x more speed with Smush Pro’s CDN, which spans %d servers worldwide.', 'wp-smushit' ),
-			Admin::CDN_POP_LOCATIONS
-		);
-		?>
+		<?php esc_html_e( 'Unlock Ultra Smush, blazing-fast CDN, and more.', 'wp-smushit' ); ?>
 		</p>
 		<a href="<?php echo esc_url( $bulk_upgrade_url ); ?>" class="smush-upsell-link" target="_blank">
 			<?php
-			printf(
-				/* translators: %s: Discount */
-				esc_html__( 'Unlock now with Pro and get %s off.', 'wp-smushit' ),
-				esc_html( WP_Smush::get_instance()->admin()->get_plugin_discount() )
-			);
+			esc_html_e( 'Smush Pro is on sale!.', 'wp-smushit' );
 			?>
 		</a>
 	</div>

@@ -13,18 +13,29 @@ use mlcf7pll\core\settings\Settings_Page;
 class Mlcf7pll_Settings_Page extends Settings_Page
 {
 
+	protected $plugin_basename;
+
     public function __construct($plugin_basename=null)
     {
 
-        $args = [
-            'slug' => 'mlcf7pll-plugin-settings',
-            'settings_prefix' => 'mlcf7pll_',
-            'page_title' => __('Multilangual CF7 Polylang', 'multilangual-cf7-polylang'),
-            'settings' => $this->get_settings_fields()
-        ];
+		$this->plugin_basename = $plugin_basename;
 
-        parent::__construct($args, $plugin_basename);
+		add_action( 'init', [ $this, 'init' ] );
+
+
     }
+
+	function init() {
+		$args = [
+			'slug' => 'mlcf7pll-plugin-settings',
+			'settings_prefix' => 'mlcf7pll_',
+			'page_title' => __('Multilangual CF7 Polylang', 'multilangual-cf7-polylang'),
+			'settings' => $this->get_settings_fields()
+		];
+
+		parent::__construct($args, $this->plugin_basename);
+
+	}
 
 
     protected function get_settings_fields()

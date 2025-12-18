@@ -47,7 +47,7 @@ class ProductAnalytics {
 				dashboard: 'dash_summary',
 				bulk: 'bulksmush_summary',
 				directory: 'directory_summary',
-				'lazy-load': 'lazy_summary',
+				'lazy-preload': 'lazy_summary',
 				cdn: 'cdn_summary',
 				webp: 'webp_summary',
 			};
@@ -237,10 +237,9 @@ class ProductAnalytics {
 			return;
 		}
 
-		window.addEventListener( 'beforeunload', () => {
-			const ajaxBulkSmushObject = window.WP_Smush?.bulk?.bulkSmush;
-			const isBulkSmushInProgressing = ajaxBulkSmushObject && ajaxBulkSmushObject.ids.length > 0 && ! progressBar.classList.contains( 'sui-hidden' );
-			if ( ! isBulkSmushInProgressing ) {
+		window.addEventListener( 'beforeunload', async () => {
+			const isBulkSmushInProgress = window.WP_Smush?.bulk.isBulkSmushInProgress() && ! progressBar.classList.contains( 'sui-hidden' );
+			if ( ! isBulkSmushInProgress ) {
 				return;
 			}
 
@@ -253,9 +252,9 @@ class ProductAnalytics {
 					'Modal Action': 'Exit',
 					'Retry Attempts': this.resumeBulkSmushCount,
 				}
-			);
+			); 
 
-			tracker.track( event, properties ).catch( () => {
+			await tracker.track( event, properties ).catch( () => {
 				this.cacheMissedEvent( {
 					event,
 					properties,
@@ -313,15 +312,15 @@ class ProductAnalytics {
 			// Handled it via PHP.
 			return {};
 		}
-		const ajaxBulkSmushObject = window.WP_Smush?.bulk?.bulkSmush;
-		const totalEnqueuedImages = ajaxBulkSmushObject?.total || 0;
-		const processedImages = ajaxBulkSmushObject?.smushed + ajaxBulkSmushObject?.errors.length;
-		const completionPercentage = totalEnqueuedImages > 0 ? Math.ceil( processedImages * 100 / totalEnqueuedImages ) : 0;
+		const bulkSmushObject = window.WP_Smush?.bulk;
+		if ( ! bulkSmushObject ) {
+			return {};
+		}
 
 		return {
 			'Retry Attempts': this.resumeBulkSmushCount,
-			'Total Enqueued Images': totalEnqueuedImages,
-			'Completion Percentage': completionPercentage,
+			'Total Enqueued Images': bulkSmushObject.getTotalEnqueuedImages(),
+			'Completion Percentage': bulkSmushObject.getCompletionPercentage(),
 		};
 	}
 

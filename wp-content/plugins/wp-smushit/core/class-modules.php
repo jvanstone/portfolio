@@ -10,13 +10,18 @@
 
 namespace Smush\Core;
 
+use Smush\Core\Avif\Avif_Controller;
 use Smush\Core\Backups\Backups_Controller;
+use Smush\Core\Cache\Cache_Controller;
 use Smush\Core\CDN\CDN_Controller;
 use Smush\Core\CDN\CDN_Settings_Ui_Controller;
 use Smush\Core\CDN\CDN_Srcset_Controller;
 use Smush\Core\Lazy_Load\Lazy_Load_Controller;
+use Smush\Core\Lazy_Load\Video_Embed\Video_Thumbnail_Controller;
+use Smush\Core\LCP\LCP_Controller;
 use Smush\Core\Media\Attachment_Url_Cache_Controller;
 use Smush\Core\Media\Media_Item_Controller;
+use Smush\Core\Media\Media_Item_Cache_Controller;
 use Smush\Core\Media_Library\Ajax_Media_Library_Scanner;
 use Smush\Core\Media_Library\Background_Media_Library_Scanner;
 use Smush\Core\Media_Library\Media_Library_Last_Process;
@@ -24,8 +29,10 @@ use Smush\Core\Media_Library\Media_Library_Slice_Data_Fetcher;
 use Smush\Core\Media_Library\Media_Library_Watcher;
 use Smush\Core\Modules\Background\Background_Pre_Flight_Controller;
 use Smush\Core\Modules\CDN;
+use Smush\Core\Next_Gen\Next_Gen_Controller;
 use Smush\Core\Photon\Photon_Controller;
 use Smush\Core\Png2Jpg\Png2Jpg_Controller;
+use Smush\Core\Resize\Auto_Resizing_Controller;
 use Smush\Core\Resize\Resize_Controller;
 use Smush\Core\S3\S3_Controller;
 use Smush\Core\Security\Security_Controller;
@@ -33,6 +40,9 @@ use Smush\Core\Smush\Smush_Controller;
 use Smush\Core\Stats\Global_Stats_Controller;
 use Smush\Core\Transform\Transformation_Controller;
 use Smush\Core\Webp\Webp_Controller;
+use Smush\Core\Webp\Webp_Retrospective_Stats_Generator;
+use Smush\Core\Image_Dimensions\Image_Dimensions_Controller;
+use Smush\Core\Membership\Membership_Controller;
 
 if ( ! defined( 'WPINC' ) ) {
 	die;
@@ -197,7 +207,11 @@ class Modules {
 		$photon_controller = new Photon_Controller();
 		$photon_controller->init();
 
-		// CDN
+		// Auto-resizing.
+		$auto_resizing_controller = new Auto_Resizing_Controller();
+		$auto_resizing_controller->init();
+
+		// CDN.
 		$cdn_controller = new CDN_Controller();
 		$cdn_controller->init();
 
@@ -209,6 +223,8 @@ class Modules {
 
 		$lazy_load_controller = Lazy_Load_Controller::get_instance();
 		$lazy_load_controller->init();
+
+		( new Video_Thumbnail_Controller() )->init();
 
 		$background_health = Background_Pre_Flight_Controller::get_instance();
 		$background_health->init();
@@ -222,8 +238,31 @@ class Modules {
 		$security_controller = Security_Controller::get_instance();
 		$security_controller->init();
 
+		$avif_controller = new Avif_Controller();
+		$avif_controller->init();
+
+		$webp_retrospective_stats = new Webp_Retrospective_Stats_Generator();
+		$webp_retrospective_stats->init();
+
+		$next_gen_controller = new Next_Gen_Controller();
+		$next_gen_controller->init();
+
 		$attachment_url_cache_controller = new Attachment_Url_Cache_Controller();
 		$attachment_url_cache_controller->init();
-	}
 
+		$lcp_controller = new LCP_Controller();
+		$lcp_controller->init();
+
+		$image_dimensions_controller = new Image_Dimensions_Controller();
+		$image_dimensions_controller->init();
+
+		$auto_resizing_controller = new Auto_Resizing_Controller();
+		$auto_resizing_controller->init();
+
+		$hub_connector = new Hub_Connector();
+		$hub_connector->init();
+
+		$membership_controller = new Membership_Controller();
+		$membership_controller->init();
+	}
 }

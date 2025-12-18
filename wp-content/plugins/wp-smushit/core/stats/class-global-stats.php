@@ -201,6 +201,22 @@ class Global_Stats {
 		return (int) $this->get_global_stats_option_value( 'image_attachment_count' );
 	}
 
+	/**
+	 * Get the percentage of media items that failed optimization.
+	 *
+	 * @return float
+	 */
+	public function get_optimization_failed_percent() {
+		$error_count     = $this->media_item_query->get_optimization_errors_count();
+		$optimized_count = $this->get_total_optimizable_items_count() - $this->get_remaining_count();
+
+		if ( $optimized_count <= 0 || $error_count <= 0 ) {
+			return 0;
+		}
+
+		return ( $error_count / $optimized_count ) * 100;
+	}
+
 	public function add_image_attachment_count( $image_attachment_count ) {
 		$this->mutex( function () use ( $image_attachment_count ) {
 			$old_image_attachment_count = $this->get_image_attachment_count();

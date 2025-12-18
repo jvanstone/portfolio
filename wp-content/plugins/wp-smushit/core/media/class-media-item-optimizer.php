@@ -39,6 +39,13 @@ class Media_Item_Optimizer {
 	 */
 	private $errors;
 
+	/**
+	 * Restoration errors.
+	 *
+	 * @var WP_Error
+	 */
+	private $restoration_errors;
+
 	public function __construct( $media_item ) {
 		$this->media_item   = $media_item;
 		$this->backups      = new Backups();
@@ -240,6 +247,8 @@ class Media_Item_Optimizer {
 
 		$this->set_restore_in_progress_transient();
 
+		$this->reset_restoration_errors();
+
 		$restoration_attempted = false;
 		$restored              = false;
 
@@ -270,6 +279,8 @@ class Media_Item_Optimizer {
 
 			// Once all data has been deleted, adjust the lists
 			$this->global_stats->adjust_lists_for_media_item( $this->media_item );
+		} else {
+			$this->set_restoration_errors( $this->backups->get_errors() );
 		}
 
 		$this->delete_restore_in_progress_transient();
@@ -452,5 +463,36 @@ class Media_Item_Optimizer {
 			delete_post_meta( $this->media_item->get_id(), self::ERROR_META_KEY );
 			$this->set_errors( null );
 		}
+	}
+
+	/**
+	 * Reset restoration errors.
+	 *
+	 * @return void
+	 */
+	private function reset_restoration_errors() {
+		$this->restoration_errors = null;
+	}
+
+	/**
+	 * Set restoration errors.
+	 *
+	 * @param WP_Error $errors Restoration errors.
+	 */
+	private function set_restoration_errors( WP_Error $errors ) {
+		$this->restoration_errors = $errors;
+	}
+
+	/**
+	 * Get restoration errors.
+	 *
+	 * @return WP_Error
+	 */
+	public function get_restoration_errors() {
+		if ( ! $this->restoration_errors ) {
+			$this->restoration_errors = new WP_Error();
+		}
+
+		return $this->restoration_errors;
 	}
 }

@@ -15,232 +15,218 @@ use mlcf7pll\core\fields\Field;
  *
  * @package mlcf7pll\settings
  */
-class Settings_Page
-{
+class Settings_Page {
+	protected $args;
+	protected $settings;
 
-    protected $args;
-    protected $settings;
-
-    /**
-     * Settings_Page constructor.
-     * @param array $args
-     */
-    public function __construct($args = null, $plugin_basename=null)
-    {
-        $this->args = wp_parse_args(
-
-            $args,
-            [
-                'slug' => 'example-plugin-settings',
-                'settings_prefix' => 'ep_',
-                'page_title' => __('Example Plugin Settings','multilangual-cf7-polylang'),
-                'settings' => array()
-            ]
-        );
-
-        // Initialise settings
-        add_action('admin_menu', array($this, 'init'));
-
-        // Add settings page to menu
-        add_action('admin_menu', array($this, 'add_menu_item'));
-
-        // Register plugin settings
-        add_action('admin_init', array($this, 'register_settings'));
-
-        // Add settings link to plugins page
-        if(!empty($plugin_basename)){
-            add_filter('plugin_action_links_'.$plugin_basename, array($this, 'add_settings_link'));
-        }
-
-    }
+	/**
+	 * Settings_Page constructor.
+	 *
+	 * @param array $args
+	 */
+	public function __construct( $args = null, $plugin_basename = null ) {
 
 
-    /**
-     *
-     */
-    function init(){
+		$this->args = wp_parse_args(
 
-        /**
-         * make settings extendable by other plugins or themes
-         */
-       $this->settings =  apply_filters($this->args['slug'].'_settings_fields', $this->args['settings']);
+			$args,
+			[
+				'slug'            => 'example-plugin-settings',
+				'settings_prefix' => 'ep_',
+				'page_title'      => __( 'Example Plugin Settings', 'multilangual-cf7-polylang' ),
+				'settings'        => [],
+			]
+		);
 
-    }
+		/**
+		 * make settings extendable by other plugins or themes
+		 */
+		$this->settings = apply_filters( $this->args['slug'] . '_settings_fields', $this->args['settings'] );
+
+		// Initialise settings
+//        add_action('admin_menu', array($this, 'init'));
+
+		// Add settings page to menu
+		add_action( 'admin_menu', [ $this, 'add_menu_item' ] );
+
+		// Register plugin settings
+		add_action( 'admin_init', [ $this, 'register_settings' ] );
+
+		// Add settings link to plugins page
+		if ( ! empty( $plugin_basename ) ) {
+			add_filter( 'plugin_action_links_' . $plugin_basename, [ $this, 'add_settings_link' ] );
+		}
+
+	}
 
 
-    /**
-     * Add settings page to admin menu
-     * @return void
-     */
-    public function add_menu_item()
-    {
-        // add to WP settings as subpage menu item
-        $page = add_submenu_page(
-            'options-general.php',
-            $this->args['page_title'],
-            $this->args['page_title'],
-            'manage_options',
-             $this->args['slug'],
-            array($this, 'render_page')
-        );
 
+	/**
+	 * Add settings page to admin menu
+	 *
+	 * @return void
+	 */
+	public function add_menu_item() {
+		// add to WP settings as subpage menu item
+		$page = add_submenu_page(
+			'options-general.php',
+			$this->args['page_title'],
+			$this->args['page_title'],
+			'manage_options',
+			$this->args['slug'],
+			[ $this, 'render_page' ]
+		);
 //        add_action( 'admin_print_styles-' . $page, array( $this, 'settings_assets' ) );
-    }
+	}
 
+	/**
+	 * Add settings link to plugin list table
+	 *
+	 * @param array $links Existing links
+	 *
+	 * @return array        Modified links
+	 */
+	public function add_settings_link( $links ) {
+		$link = '<a href="admin.php?page=' . $this->args['slug'] . '">' . __( 'Settings' ) . '</a>';
+		array_unshift( $links, $link );
 
-    /**
-     * Add settings link to plugin list table
-     * @param array $links Existing links
-     * @return array        Modified links
-     */
-    public function add_settings_link($links) {
-        $link = '<a href="admin.php?page='.$this->args['slug'].'">'.__('Settings').'</a>';
-        array_unshift( $links, $link);
-        return $links;
-    }
+		return $links;
+	}
 
-    /**
-     * Build settings fields
-     * override in Child Class
-     * @return array Fields to be displayed on settings page
-     */
-    protected function get_settings_fields()
-    {
-        $settings = array();
+	/**
+	 * Build settings fields
+	 * override in Child Class
+	 *
+	 * @return array Fields to be displayed on settings page
+	 */
+	protected function get_settings_fields() {
+		$settings = [];
 
-        return $settings;
-    }
+		return $settings;
+	}
 
-    /**
-     * Register plugin settings
-     * @return void
-     */
-    public function register_settings()
-    {
-        if (is_array($this->settings)) {
-            foreach ($this->settings as $section => $data) {
+	/**
+	 * Register plugin settings
+	 *
+	 * @return void
+	 */
+	public function register_settings() {
+		if ( is_array( $this->settings ) ) {
+			foreach ( $this->settings as $section => $data ) {
 
-                // Add section to page
-                add_settings_section($section, $data['title'], [$this, 'settings_section'], $this->args['slug']);
+				// Add section to page
+				add_settings_section( $section, $data['title'], [ $this, 'settings_section' ], $this->args['slug'] );
 
-                foreach ($data['fields'] as $field) {
+				foreach ( $data['fields'] as $field ) {
 
-                    // Register field
-                    $option_name = $this->args['settings_prefix'] . $field['name'];
+					// Register field
+					$option_name = $this->args['settings_prefix'] . $field['name'];
 
+					$register_setting_args = [];
+					// Sanitize callback for field
+					$sanitize_callback = '';
+					if ( isset( $field['sanitize_callback'] ) ) {
+						$register_setting_args['sanitize_callback'] = $field['sanitize_callback'];
+					}
 
-                    $register_setting_args = [];
-                    // Sanitize callback for field
-                    $sanitize_callback = '';
-                    if (isset($field['sanitize_callback'])) {
-                        $register_setting_args['sanitize_callback'] = $field['sanitize_callback'];
-                    }
+					register_setting(
+						$this->args['slug'],
+						$option_name,
+						$register_setting_args
+					);
 
-                    register_setting(
-                        $this->args['slug'],
-                        $option_name,
-                        $register_setting_args
-                    );
+					// Add field to page
+					add_settings_field(
+						$field['name'],
+						$field['label'],
+						[ $this, 'display_field' ],
+						$this->args['slug'],
+						$section,
+						[ 'field' => $field ]
+					);
+				}
+			}
+		}
+	}
 
-                    // Add field to page
-                    add_settings_field(
-                        $field['name'],
-                        $field['label'],
-                        array($this, 'display_field'),
-                        $this->args['slug'],
-                        $section,
-                        array('field' => $field)
-                    );
-                }
-            }
-        }
-    }
+	public function settings_section( $section ) {
+		// output section description if defined
+		if ( ! empty( $this->settings[ $section['id'] ]['description'] ) ) {
+			echo '<p>' . $this->settings[ $section['id'] ]['description'] . '</p>' . PHP_EOL;
+		}
+	}
 
-    public function settings_section($section)
-    {
-        // output section description if defined
-        if(!empty($this->settings[$section['id']]['description'])){
-            echo '<p>' . $this->settings[$section['id']]['description'] . '</p>' . PHP_EOL;
-        }
+	/**
+	 * Generate HTML for displaying fields
+	 * TODO: separate this into new Class Fields to make it usable by Metaboxes AND Settings/Tool Pages
+	 *
+	 * @param array $args Field data
+	 *
+	 * @return void
+	 */
+	public function display_field( $args ) {
 
-    }
+		$field = $args['field'];
 
+		if ( empty( $field['id'] ) ) {
+			$field['id'] = $field['name'];
+		}
 
-    /**
-     * Generate HTML for displaying fields
-     * TODO: separate this into new Class Fields to make it usable by Metaboxes AND Settings/Tool Pages
-     * @param array $args Field data
-     * @return void
-     */
-    public function display_field($args)
-    {
+		// fragwürdig, lieber gleich in der data mit prefix definieren?
+		$field['name'] = $this->args['settings_prefix'] . $field['name'];
 
-        $field = $args['field'];
+		$option = get_option( $field['name'] );
 
-        if(empty($field['id'])){
-            $field['id'] =  $field['name'];
-        }
+		$value = '';
+		if ( isset( $field['default'] ) ) {
+			$value = $field['default'];
+		}
 
-        // fragwürdig, lieber gleich in der data mit prefix definieren?
-        $field['name'] = $this->args['settings_prefix'] . $field['name'];
+		// für checkboxes kompliziert wenn default = true ist
+		// Eintrag nicht vorhanden: $option === false
+		// Eintrag positiv: $option === 'on'  etc.
+		// Eintrag vorhanden, aber nicht positiv: option !== false
+		if ( $field['type'] == 'checkbox' ) {
+			if ( $option !== false ) {
+				$value = $option;
+			}
+		} else if ( $option ) {
+			$value = $option;
+		}
 
-        $option = get_option($field['name']);
+		if ( $option && ( $option !== false || $field['type'] != 'checkbox' ) ) {
+			$value = $option;
+		}
 
-        $value = '';
-        if (isset($field['default'])) {
-            $value = $field['default'];
-        }
+		$field = new Field( $field );
+		$field->render( $value );
+	}
 
-        // für checkboxes kompliziert wenn default = true ist
-        // Eintrag nicht vorhanden: $option === false
-        // Eintrag positiv: $option === 'on'  etc.
-        // Eintrag vorhanden, aber nicht positiv: option !== false
-        if($field['type'] == 'checkbox'){
-            if($option !== false) $value = $option;
-        } else if ($option) {
-            $value = $option;
-        }
+	/**
+	 * Load settings page content
+	 *
+	 * @return void
+	 */
+	public function render_page() {
+		// Build page HTML
+		$html = '';
+		$html .= '<div class="wrap" id="' . $this->args['slug'] . '">' . PHP_EOL;
+		$html .= '<h1>' . $this->args['page_title'] . '</h1>';
+		$html .= '<form method="post" action="options.php" enctype="multipart/form-data">' . PHP_EOL;
 
-        if ($option && ($option !== false || $field['type'] != 'checkbox')) {
-            $value = $option;
-        }
+		ob_start();
 
-        $field = new Field($field);
-        $field->render($value);
-    }
+		settings_fields( $this->args['slug'] );
 
+		do_settings_sections( $this->args['slug'] );
 
-    /**
-     * Load settings page content
-     * @return void
-     */
-    public function render_page()
-    {
-        // Build page HTML
-        $html = '';
-        $html .= '<div class="wrap" id="'.$this->args['slug'].'">' . PHP_EOL;
-        $html .= '<h1>'.$this->args['page_title'].'</h1>';
-        $html .= '<form method="post" action="options.php" enctype="multipart/form-data">' . PHP_EOL;
+		submit_button();
 
-        ob_start();
+		$html .= ob_get_clean();
 
-        settings_fields($this->args['slug']);
+		$html .= '</form>' . PHP_EOL;
+		$html .= '</div>' . PHP_EOL;
 
-        do_settings_sections($this->args['slug']);
-
-        submit_button();
-
-        $html .= ob_get_clean();
-
-        $html .= '</form>' . PHP_EOL;
-        $html .= '</div>' . PHP_EOL;
-
-        echo $html;
-    }
-
-
-
-
-
-
+		echo $html;
+	}
 }

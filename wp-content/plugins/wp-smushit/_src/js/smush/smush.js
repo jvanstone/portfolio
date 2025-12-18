@@ -367,9 +367,9 @@ class Smush {
 		if ( isNextgen ) {
 			statsHuman.html( formattedSize );
 		} else {
-			statsHuman.html( WP_Smush.helpers.getFormatFromString( formattedSize ) );
+			statsHuman.html( formattedSize );
 			jQuery( '.sui-summary-large.wp-smush-stats-human' )
-				.html( WP_Smush.helpers.getSizeFromString( formattedSize ) );
+				.html( formattedSize );
 		}
 
 		// Update the savings percent.
@@ -598,14 +598,14 @@ class Smush {
 	}
 
 	showBulkFreeLimitReachedNotice() {
-		const bulkFreeLimitReachedNotice = document.getElementById( 'smush-limit-reached-notice' );
+		const bulkFreeLimitReachedNotice = document.getElementById( 'bulk-smush-limit-reached-notice' );
 		if ( bulkFreeLimitReachedNotice ) {
 			bulkFreeLimitReachedNotice.classList.remove( 'sui-hidden' );
 		}
 	}
 
 	hideBulkFreeLimitReachedNotice() {
-		const bulkFreeLimitReachedNotice = document.getElementById( 'smush-limit-reached-notice' );
+		const bulkFreeLimitReachedNotice = document.getElementById( 'bulk-smush-limit-reached-notice' );
 		if ( bulkFreeLimitReachedNotice ) {
 			bulkFreeLimitReachedNotice.classList.add( 'sui-hidden' );
 		}

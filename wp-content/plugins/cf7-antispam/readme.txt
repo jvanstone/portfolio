@@ -1,10 +1,10 @@
 === AntiSpam for Contact Form 7 ===
 Contributors: codekraft, gardenboi
-Tags: antispam, blacklist, honeypot, geoip, security, contact form 7
-Requires at least: 5.4
-Tested up to: 6.5.5
-Requires PHP: 5.6
-Stable tag: 0.6.3
+Tags: antispam, blacklist, honeypot, geoip, security
+Requires at least: 6.2
+Tested up to: 6.8
+Requires PHP: 7.4
+Stable tag: 0.7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,7 +24,7 @@ GeoIP - (Optional) If you need to restrict which countries or languages can emai
 ✅ Browser Fingerprinting
 ✅ Language checks (Geo-ip, http headers and browser)
 ✅ Honeypot
-*️⃣ Honeyform*
+️🆕 Honeyform*
 ✅ DNS Blacklists
 ✅ Blacklists (with automatic ban after N failed attempts, user defined ip exclusion list)
 ✅ Hidden fields with encrypted unique hash
@@ -32,7 +32,7 @@ GeoIP - (Optional) If you need to restrict which countries or languages can emai
 ✅ Prohibited words in message/email and user agent
 ✅ B8 statistical "Bayesian" spam filter
 ✅ Identity protection
-🆕 Webmail protection
+✅ Webmail protection
 
 == Extends Flamingo and turns it into a spam manager! ==
 With this plugin, you can now review emails and train B8 to identify spam and legitimate messages. This feature proves useful, especially during the initial stages when some spam emails may slip through.
@@ -46,6 +46,7 @@ Additional Notes:
 
 == B8 statistical "Bayesian" Filter ==
 Originally created by [Gary Robinson](https://en.wikipedia.org/wiki/Gary_Robinson) [b8 is a statistical "Bayesian"](https://www.linuxjournal.com/article/6467) spam filter implemented in PHP.
+The B8 filter is a foundational example of **Machine Learning (ML)** for text classification, representing an early, yet powerful, statistical approach in Natural Language Processing (NLP). This approach precedes feature-weighting methods like **TF-IDF**, which in turn paved the way for modern deep learning architectures, such as **Transformers** and **GPT**.
 The filter tells you whether a text is spam or not, using statistical text analysis. What it does is: you give b8 a text and it returns a value between 0 and 1, saying it's ham when it's near 0 and saying it's spam when it's near 1. See [How does it work?](https://nasauber.de/opensource/b8/readme.html#how-does-it-work) for details about this.
 To be able to distinguish spam and ham (non-spam), b8 first has to learn some spam and some ham texts. If it makes mistakes when classifying unknown texts or the result is not distinct enough, b8 can be told what the text actually is, getting better with each learned text.
 This takes place on your own server without relying on third-party services.
@@ -60,10 +61,19 @@ Will be hidden the WordPress and WooCommerce version (wp_generator, woo_version)
 == Mailbox Protection (Multiple Send) ==
 Enhance email security by enabling the "Multiple Send" feature, which prevents consecutive email submissions to the user's mailbox. This measure is effective in thwarting automated spam attempts and ensures a secure communication environment.
 
+== Security & Privacy: A Local-First Approach ==
+AntiSpam for Contact Form 7 is built with your security and privacy as the **top priority**. Unlike many modern anti-spam solutions that rely on external cloud services or third-party subscriptions, our plugin is designed to run **entirely on your own WordPress installation**.
+
+* **100% Local Processing:** All anti-spam logic, checks, and data processing are performed directly on your server. **No data is ever sent to, or stored by, any external third-party service** (including ours).
+* **Not a Software as a Service (SaaS):** This plugin is a standalone, self-contained software solution, not an interface to a paid or subscription-based external service. Once installed, it works autonomously.
+* **Enhanced Security:** Since there is **no central server or external API endpoint** to communicate with, your website is immune to potential risks associated with centralized services, such as Single Point of Failure or data breach risks.
+
+You retain complete control and ownership over the security of your Contact Form 7 submissions.
+
 == Privacy Notices ==
-AntiSpam for Contact Form 7 only process the ip but doesn't store any personal data, but anyway it creates a dictionary of spam and ham words in the wordpress database.
-This database may contain words that are in the e-mail message, so can contain also personal data. This data can be "degenerated" that means the words that were in the e-mail might have been changed.
-The purpose of this word collecting is to build a dictionary used for the spam detection.
+AntiSpam for Contact Form 7 only processes the IP but doesn't store any personal data directly from the user input. However, it creates a dictionary of spam and ham (non-spam) words in the WordPress database.
+This dictionary is built from words found in the submitted messages, meaning it **may contain words that were part of the user's e-mail message or personal data**. This data is "degenerated," which means the words might be normalized or altered before being stored.
+The sole purpose of this word collecting is to build a dictionary used for local, decentralized spam detection.
 
 == Installation ==
 1. Upload the entire `cf7-antispam` folder to the `/wp-content/plugins/` directory.
@@ -161,6 +171,44 @@ Enable **extended debug mode** ("CF7ANTISPAM_DEBUG" has to be enabled) - disable
 
 
 == Changelog ==
+
+= 0.7.2 =
+* Update fallback (thanks for the idea to @lemurnick)
+* Fix for missing enqueue in some cases (thanks to @ohhcee, @o2xav, @WORX Developer for the feedbacks)
+* Blacklist filters cleanup
+* Registers the spam checks individually
+* Updated encrypt/decrypt function
+
+= 0.7.1 =
+* Fix: Fixes a wrong escape placeholder in the prepare SQL query that was preventing to check if an IP was blacklisted. (thanks to @jackrus60 for the report)
+
+= 0.7.0 =
+* Enhancement: Updated Admin User Interface (UI).
+* Enhancement: Added a new debug information section to display the status of GeoIP, REST API, and DNSBL functionality.
+* Enhancement: Blacklist Export Feature: Users can now export the blacklist.
+* Enhancement: A date column has been added to the blacklist database table.
+* Fix: The name attribute for Honeypots now correctly reflects the name chosen by the user (thanks to @@developeratworx for reporting this issue!).
+* Fix: Improved code security by implementing prepared statements for all database queries and adding sanitization and escaping where previously missing.
+* Fix: Refactored and reorganized the src folder structure for better code organization and maintainability.
+* Fix: Implemented REST API endpoints for the admin "Tools" section, allowing operations on that page to be performed without reloading.
+* Fix: General code cleanup was performed throughout the project.
+* Fix: Fixed the resend mail function (A big thank you to @chrober for reporting this issue!).
+
+= 0.6.4 =
+* Migration from JavaScript to TypeScript for better type safety
+* Fix: webdriver detection logic returning null instead of boolean
+* Fix: FormData constructor error with incorrect reference (thanks to @ohhcee for the report)
+* Fix: WebGL renderer null reference causing indexOf errors
+* Fix: FormData support condition logic inverted
+* Fix: as suggested by @filipr fixed the issue with the additional data in the email related to flamingo (thanks to @apterix for the bug report)
+* Enhancement: Added MutationObserver support for dynamically loaded forms (implemented @dmbur idea, thanks!)
+* Enhancement: Added duplicate form processing prevention
+* Enhancement: Wrapped main execution in IIFE to prevent global scope pollution
+* Enhancement: Improved browser compatibility with graceful fallbacks
+* Enhancement: Enhanced canvas fingerprinting with proper error handling
+* Performance: Moved form-specific variables inside loops to prevent cross-contamination
+* Performance: Added proper type annotations and safer innerHTML assignments
+* Tests: switch to Playwright tests
 
 = 0.6.3 =
 * Quick fix for null is not an object (evaluating 'document.getElementById("cf7a_download_button") (bug report, thanks to @WebCodePoet)

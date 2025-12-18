@@ -924,7 +924,7 @@ class Media_Item extends Smush_File {
 	/**
 	 * @return false|string
 	 */
-	private function get_attached_file() {
+	public function get_attached_file() {
 		if ( is_null( $this->attached_file ) ) {
 			$this->attached_file = get_attached_file( $this->get_id() );
 		}
@@ -1154,10 +1154,6 @@ class Media_Item extends Smush_File {
 	}
 
 	public function can_be_restored() {
-		if ( ! $this->plugin_settings->is_backup_active() ) {
-			return false;
-		}
-
 		// Note that we don't check if file exists because the file might be on a remote server e.g. s3
 		return ! empty( $this->get_default_backup_size() );
 	}
@@ -1167,5 +1163,17 @@ class Media_Item extends Smush_File {
 		$cut_off   = $this->plugin_settings->get_large_file_cutoff();
 
 		return $file_size > $cut_off;
+	}
+
+	public function set_wp_metadata( $metadata ) {
+		$this->metadata = $metadata;
+	}
+
+	public function set_attached_file( $attached_file ) {
+		$this->attached_file = $attached_file;
+	}
+
+	public function set_original_image_path( $original_image_path ) {
+		$this->original_image_path = $original_image_path;
 	}
 }
