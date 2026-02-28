@@ -26,8 +26,14 @@ if ( ! class_exists( 'CF7Apps_Internal_Settings_Apps' ) ) :
          * @since 3.2.0
          */
         private function __construct() {
-            if ( isset( $_GET['page'] ) && isset( $_GET['post'] ) ) {
-                if ( 'wpcf7' === $_GET['page'] ) {
+            if ( isset( $_GET['page'] ) ) {
+                // Run on existing form edit screen (page=wpcf7&post=ID)
+                if ( 'wpcf7' === $_GET['page'] && isset( $_GET['post'] ) ) {
+                    $this->run();
+                }
+
+                // Also run on "Add New" form screen (page=wpcf7-new, no post ID yet)
+                if ( 'wpcf7-new' === $_GET['page'] ) {
                     $this->run();
                 }
             }
@@ -49,11 +55,9 @@ if ( ! class_exists( 'CF7Apps_Internal_Settings_Apps' ) ) :
          * @param string $hook The current admin page hook.
          */
         public function admin_enqueue_scripts( $hook ) {
-            if ( 'toplevel_page_wpcf7' === $hook ) {
+            if ( 'toplevel_page_wpcf7' === $hook  || 'contact_page_wpcf7-new' === $hook ) {
+
                 $form_id  = isset( $_GET['post'] ) ? intval( $_GET['post'] ) : 0;
-                if ( 0 === $form_id ) {
-                    return;
-                }
                 $options                 = get_option( 'cf7apps_settings' );
                 $redirection_app_enabled = false;
                 $webhook_app_enabled     = false;
@@ -121,6 +125,7 @@ if ( ! class_exists( 'CF7Apps_Internal_Settings_Apps' ) ) :
                             'nonce'     => wp_create_nonce( 'wp_rest' ),
                             'formID'    => $form_id,
                             'appIndexURL' => admin_url( 'admin.php?page=cf7apps' ),
+                            'pluginVersion' => CF7APPS_VERSION,
                         )
                     );
                 }

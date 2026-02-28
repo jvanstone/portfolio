@@ -21,7 +21,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Class Lazy
  */
 class Lazy_Load_Controller extends Controller {
-	const LAZY_LOAD_TRANSFORM_PRIORITY = 20;
+	private static $lazy_load_transform_priority = 20;
 
 	/**
 	 * Module slug.
@@ -90,7 +90,7 @@ class Lazy_Load_Controller extends Controller {
 		$this->register_action( 'wp_smush_content_transforms', array(
 			$this,
 			'register_lazy_load_transform',
-		), self::LAZY_LOAD_TRANSFORM_PRIORITY );
+		), self::$lazy_load_transform_priority );
 
 		// Only run on front end and if lazy loading is enabled.
 		if ( is_admin() || ! $this->settings->is_module_active( 'lazy_load' ) ) {

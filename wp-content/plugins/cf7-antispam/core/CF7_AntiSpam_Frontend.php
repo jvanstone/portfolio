@@ -1,7 +1,4 @@
 <?php
-
-namespace CF7_AntiSpam\Core;
-
 /**
  * Front face related stuff
  *
@@ -10,6 +7,8 @@ namespace CF7_AntiSpam\Core;
  * @subpackage CF7_AntiSpam/includes
  * @author     Codekraft Studio <info@codekraft.it>
  */
+
+namespace CF7_AntiSpam\Core;
 
 use WP_Query;
 use WPCF7_ContactForm;
@@ -80,20 +79,24 @@ class CF7_AntiSpam_Frontend {
 	 */
 	public function load_scripts() {
 		// Register the contact form antispam scripts
-		add_action('wp_enqueue_scripts', array($this, 'register_scripts'));
+		add_action( 'wp_enqueue_scripts', array( $this, 'register_scripts' ) );
 
 		// Select the hook to use based on the User's choice
-		$hook = !empty($this->options['optimize_scripts_loading']) ? 'wpcf7_enqueue_scripts' : 'wp_enqueue_scripts';
+		$hook = ! empty( $this->options['optimize_scripts_loading'] ) ? 'wpcf7_enqueue_scripts' : 'wp_enqueue_scripts';
 
 		// enqueue CF7 antispam scripts only if contact form 7 wpcf7_enqueue_scripts is called
-		add_action( $hook, array( $this, 'enqueue_scripts' ));
+		add_action( $hook, array( $this, 'enqueue_scripts' ) );
 	}
 
+	/**
+	 * Handles loading scripts
+	 *
+	 * @return void
+	 */
 	public function setup() {
 		/* It adds hidden fields to the form */
 		add_filter( 'wpcf7_form_hidden_fields', array( $this, 'cf7a_add_hidden_fields' ), 1 );
 		add_filter( 'wpcf7_config_validator_available_error_codes', array( $this, 'cf7a_remove_cf7_error_message' ), 10, 2 );
-
 
 		/* It adds a hidden field to the form with a unique value that is encrypted with a cipher */
 		if ( isset( $this->options['check_bot_fingerprint'] ) && intval( $this->options['check_bot_fingerprint'] ) === 1 ) {
@@ -146,11 +149,11 @@ class CF7_AntiSpam_Frontend {
 	/**
 	 * Remove "unsafe email config" error messsage
 	 *
-	 * @param array  $error_codes  List of error codes.
-	 * @param object $contact_form Current contact form object.
+	 * @param array $error_codes  List of error codes.
+	 *
 	 * @return array               Modified array of error codes, without "unsafe_email_without_protection".
 	 */
-	public function cf7a_remove_cf7_error_message( $error_codes, $contact_form ) {
+	public function cf7a_remove_cf7_error_message( array $error_codes ): array {
 		// List error codes to disable here.
 		$error_codes_to_disable = array(
 			'unsafe_email_without_protection',
@@ -209,7 +212,7 @@ class CF7_AntiSpam_Frontend {
 					break;
 				}
 			}
-		}
+		}//end foreach
 
 		return $form_elements;
 	}
@@ -230,18 +233,18 @@ class CF7_AntiSpam_Frontend {
 		$excluded_ids = apply_filters( 'cf7a_honeyform_excluded_id', array() );
 		$current_id   = get_the_ID();
 
-		// Check if the current post ID is in the excluded IDs array
-		if ( in_array( $current_id, $excluded_ids ) ) {
-			// If the current post ID is excluded, return the original content
+		// Check if the current post-ID is in the excluded IDs array
+		if ( in_array( $current_id, $excluded_ids, true ) ) {
+			// If the current post-ID is excluded, return the original content
 			return $content;
 		}
 
-		if ( is_array( $this->options['honeyform_excluded_pages'] ) && in_array( $current_id, $this->options['honeyform_excluded_pages'] ) ) {
-			// If the current post ID is excluded, return the original content
+		if ( is_array( $this->options['honeyform_excluded_pages'] ) && in_array( $current_id, $this->options['honeyform_excluded_pages'], true ) ) {
+			// If the current post-ID is excluded, return the original content
 			return $content;
 		}
 
-		/* $html will store the honeyform html */
+		/* The $html variable will store the honeyform HTML code */
 		$html = '';
 
 		$form_class = sanitize_html_class( $this->options['cf7a_customizations_class'] );
@@ -353,19 +356,6 @@ class CF7_AntiSpam_Frontend {
 		printf( '<style>body div .wpcf7-form .%s{position:absolute;margin-left:-999em;}</style>', esc_attr( $form_class ) );
 	}
 
-	function generateHash( $length = 12 ) {
-		$characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-		$hash       = '';
-
-		for ( $i = 0; $i < $length; $i++ ) {
-			// TODO: after upgrade to PHP>7.x, use random_int()
-			$rand_index = wp_rand( 0, strlen( $characters ) - 1 );
-			$hash      .= $characters[ $rand_index ];
-		}
-
-		return $hash;
-	}
-
 	/**
 	 * It adds hidden fields to the form
 	 *
@@ -383,10 +373,8 @@ class CF7_AntiSpam_Frontend {
 
 		/* add the language if required */
 		if ( intval( $this->options['check_language'] ) === 1 ) {
-			$accept                          = empty( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) ? false : sanitize_text_field( wp_unslash( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) );
-			$fields[ $prefix . '_language' ] = isset( $accept ) ?
-				cf7a_crypt( $accept, $this->options['cf7a_cipher'] ) :
-				cf7a_crypt( 'language not detected', $this->options['cf7a_cipher'] );
+			// Handled by Cache Compatibility
+			$fields[ $prefix . '_language' ] = '';
 		}
 
 		/* add the timestamp if required */
@@ -394,21 +382,21 @@ class CF7_AntiSpam_Frontend {
 			$fields[ $prefix . '_timestamp' ] = cf7a_crypt( time(), $this->options['cf7a_cipher'] );
 		}
 
-		/* whenever required add the hash to the form to prevent multiple submissions */
+		/* whenever required, add the hash to the form to prevent multiple submissions */
 		if ( intval( $this->options['mailbox_protection_multiple_send'] ) === 1 ) {
-			$fields[ $prefix . 'hash' ] = $this->generateHash();
+			// Served empty for caching compatibility, populated via JS
+			$fields[ $prefix . 'hash' ] = '';
 		}
 
 		/* add the default hidden fields */
-		$referrer = ! empty( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : false;
-		$protocol = ! empty( $_SERVER['SERVER_PROTOCOL'] ) ? esc_url_raw( wp_unslash( $_SERVER['SERVER_PROTOCOL'] ) ) : false;
 		return array_merge(
 			$fields,
 			array(
 				$prefix . 'version'  => '1.0',
-				$prefix . 'address'  => cf7a_crypt( cf7a_get_real_ip(), $this->options['cf7a_cipher'] ),
-				$prefix . 'referer'  => cf7a_crypt( $referrer ? $referrer : '', $this->options['cf7a_cipher'] ),
-				$prefix . 'protocol' => cf7a_crypt( $protocol ? $protocol : '', $this->options['cf7a_cipher'] ),
+				// Handled by Cache Compatibility
+				$prefix . 'address'  => '',
+				$prefix . 'referer'  => '',
+				$prefix . 'protocol' => '',
 			)
 		);
 	}
@@ -558,6 +546,7 @@ class CF7_AntiSpam_Frontend {
 				'prefix'        => $this->options['cf7a_customizations_prefix'],
 				'disableReload' => $this->options['cf7a_disable_reload'],
 				'version'       => cf7a_crypt( CF7ANTISPAM_VERSION, $this->options['cf7a_cipher'] ),
+				'restUrl'       => get_rest_url( null, 'cf7-antispam/v1' ),
 			)
 		);
 	}
@@ -574,16 +563,16 @@ class CF7_AntiSpam_Frontend {
 	/**
 	 * Check if the form should be aborted if mail was sent or invalid
 	 *
-	 * @param $cf7 WPCF7_ContactForm - the contact form object
-	 * @param $abort boolean - if the form should be aborted? not sure because undocumented
-	 * @param $submission WPCF7_Submission - the form object
+	 * @param WPCF7_ContactForm $cf7 - the contact form object
+	 * @param boolean           $abort - if the form should be aborted? not sure because undocumented
+	 * @param WPCF7_Submission  $submission - the form object
 	 *
 	 * @return void - if the form should be aborted
 	 */
 	public function cf7a_check_resend( $cf7, &$abort, $submission ) {
 
 		// Get the hash from the form data if it exists
-		$raw_hash = ! empty( $_POST['_cf7a_hash'] ) ? sanitize_text_field( wp_unslash($_POST['_cf7a_hash'] ) ) : false; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$raw_hash = ! empty( $_POST['_cf7a_hash'] ) ? sanitize_text_field( wp_unslash( $_POST['_cf7a_hash'] ) ) : false; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( ! $raw_hash ) {
 			return;
 		}
@@ -614,10 +603,12 @@ class CF7_AntiSpam_Frontend {
 				)
 			);
 		} else {
-			delete_transient( "mail_sent_$hash" );
-			set_transient( "mail_sent_$hash", true, $expire );
+			// Compatibility with caching: append the IP to the hash to make it unique per user
+			$ip_hash = md5( $hash . \cf7a_get_real_ip() );
+			delete_transient( "mail_sent_$ip_hash" );
+			set_transient( "mail_sent_$ip_hash", true, $expire );
 			return;
-		}
+		}//end if
 
 		// abort the form
 		$abort = true;

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * The core plugin class.
  *
@@ -106,6 +105,9 @@ class CF7_AntiSpam {
 		/* the admin area */
 		$this->load_admin();
 
+		/* the public rest api */
+		new CF7_AntiSpam_Public_Rest_Api();
+
 		/* the frontend area */
 		$this->load_frontend();
 	}
@@ -147,7 +149,7 @@ class CF7_AntiSpam {
 	 * @access   private
 	 */
 	private function set_locale() {
-		$plugin_i18n = new CF7_AntiSpam_i18n();
+		$plugin_i18n = new CF7_AntiSpam_I18n();
 
 		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
 	}
@@ -168,8 +170,8 @@ class CF7_AntiSpam {
 		$this->loader->add_filter( 'wpcf7_spam', $plugin_antispam, 'cf7a_spam_filter', 8 );
 
 		/* the unspam routine */
-		$blacklist = new CF7_Antispam_Blacklist();
-		add_action( 'cf7a_cron', array( $blacklist, 'cf7a_cron_unban' ) );
+		$blocklist = new CF7_Antispam_Blocklist();
+		add_action( 'cf7a_cron', array( $blocklist, 'cf7a_cron_unban' ) );
 
 		/* flamingo */
 		if ( defined( 'FLAMINGO_VERSION' ) ) {
@@ -204,14 +206,14 @@ class CF7_AntiSpam {
 	 */
 	private function load_admin() {
 
-		/** the rest api */
+		/** Enable the rest api */
 		new CF7_AntiSpam_Rest_Api();
 
 		if ( is_admin() ) {
 
 			/* It handles the actions that are triggered by the user */
 			$tools = new CF7_AntiSpam_Admin_Tools();
-			add_action( 'admin_init', array( $tools, 'cf7a_handle_actions' ), 1 );
+			add_action( 'admin_init', array( $tools, 'cf7a_handle_actions' ) );
 
 			/* the admin area */
 			$plugin_admin = new CF7_AntiSpam_Admin_Core( $this->get_plugin_name(), $this->get_version() );
@@ -245,7 +247,7 @@ class CF7_AntiSpam {
 				add_action( 'manage_flamingo_inbound_posts_custom_column', array( $cf7a_flamingo, 'flamingo_d8_column' ), 10, 2 );
 				add_action( 'manage_flamingo_inbound_posts_custom_column', array( $cf7a_flamingo, 'flamingo_resend_column' ), 11, 2 );
 			}
-		}
+		}//end if
 	}
 
 	/**
@@ -262,6 +264,10 @@ class CF7_AntiSpam {
 
 			$plugin_frontend->setup();
 			$plugin_frontend->load_scripts();
+
+			/* Cache compatibility */
+			$plugin_cache = new CF7_AntiSpam_Cache_Compatibility( $this->get_plugin_name(), $this->get_version() );
+			$plugin_cache->setup();
 		}
 	}
 
@@ -376,8 +382,8 @@ class CF7_AntiSpam {
 	/**
 	 * This function is used to generate the spam report email.
 	 *
-	 * @param $mail_body string The email body
-	 * @param $last_report_timestamp int The last report timestamp
+	 * @param string $mail_body The email body
+	 * @param int    $last_report_timestamp The last report timestamp
 	 *
 	 * @return string The email body
 	 */
@@ -387,19 +393,24 @@ class CF7_AntiSpam {
 		$post_table = $wpdb->prefix . 'posts';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$all  = $wpdb->get_var( $wpdb->prepare(
-			"SELECT COUNT(*) AS cnt FROM %i WHERE post_status = 'flamingo-spam';"
-			, $post_table ) );
+		$all = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) AS cnt FROM %i WHERE post_status = 'flamingo-spam';",
+				$post_table
+			)
+		);
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$last = $wpdb->get_var( $wpdb->prepare(
+		$last = $wpdb->get_var(
+			$wpdb->prepare(
 				"SELECT COUNT(*) AS cnt
 		 	 FROM %i
 		 	 WHERE post_date_gmt >= FROM_UNIXTIME( %d )
 			 AND post_status = 'flamingo-spam';",
-			$post_table,
+				$post_table,
 				$last_report_timestamp
-			) );
+			)
+		);
 
 		$mail_body .= '<p>' . sprintf(
 				/* translators: %1$s overall spam attempts, %2$s since last report */

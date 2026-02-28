@@ -1,8 +1,8 @@
 <?php return array(
     'root' => array(
         'name' => 'codekraft/contactform7-antispam',
-        'pretty_version' => '0.7.2',
-        'version' => '0.7.2.0',
+        'pretty_version' => '0.7.4',
+        'version' => '0.7.4.0',
         'reference' => null,
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
@@ -11,8 +11,8 @@
     ),
     'versions' => array(
         'codekraft/contactform7-antispam' => array(
-            'pretty_version' => '0.7.2',
-            'version' => '0.7.2.0',
+            'pretty_version' => '0.7.4',
+            'version' => '0.7.4.0',
             'reference' => null,
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'composer/ca-bundle' => array(
-            'pretty_version' => '1.5.9',
-            'version' => '1.5.9.0',
-            'reference' => '1905981ee626e6f852448b7aaa978f8666c5bc54',
+            'pretty_version' => '1.5.10',
+            'version' => '1.5.10.0',
+            'reference' => '961a5e4056dd2e4a2eedcac7576075947c28bf63',
             'type' => 'library',
             'install_path' => __DIR__ . '/./ca-bundle',
             'aliases' => array(),
@@ -47,9 +47,9 @@
             'dev_requirement' => false,
         ),
         'maxmind/web-service-common' => array(
-            'pretty_version' => 'v0.11.0',
-            'version' => '0.11.0.0',
-            'reference' => '5b9e3d3472213361eebdb3ab8879e91b8952091b',
+            'pretty_version' => 'v0.11.1',
+            'version' => '0.11.1.0',
+            'reference' => 'c309236b5a5555b96cf560089ec3cead12d845d2',
             'type' => 'library',
             'install_path' => __DIR__ . '/../maxmind/web-service-common',
             'aliases' => array(),

@@ -40,7 +40,7 @@ class Elementor_Integration extends Controller {
 		$this->register_filter( 'elementor/frontend/the_content', array( $this, 'transform_elementor_content' ) );
 		$this->register_filter( 'elementor/css-file/post/parse', array( $this, 'transform_elementor_post_css' ) );
 		$this->register_filter( 'wp_smush_media_item_size', array( $this, 'initialize_elementor_custom_size' ), 10, 4 );
-		$this->register_action( Cache_Helper::CLEAR_CACHE_ACTION, array( $this, 'clear_elementor_cache' ) );
+		$this->register_action( Cache_Helper::get_clear_cache_action(), array( $this, 'clear_elementor_cache' ) );
 	}
 
 	public function should_run() {
@@ -346,7 +346,7 @@ class Elementor_Integration extends Controller {
 	 *
 	 * @return string Hashed string of the query.
 	 */
-	private function query_to_hash( array $query ) {
+	private function query_to_hash( $query ) {
 		$hash = array();
 
 		foreach ( $query as $endpoint => $value ) {

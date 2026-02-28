@@ -285,6 +285,9 @@ const CF7AppsSettings = () => {
             }
         }
 
+        // Clear any previous warning once validation passes
+        setNotice({ show: false, text: '' });
+
         setIsSaving( true );
         saveSettings( app, formData, CF7AppsInternalSettings.formID )
             .then( response => {
@@ -376,6 +379,7 @@ const CF7AppsSettings = () => {
                                         value={ formData[ fieldKey ] }
                                         onChange={ handleInputChange }
                                         disabled={ field.disabled }
+                                        min={ field.min }
                                     />
                                 );
                             } else if ( 'checkbox' === field.type ) {

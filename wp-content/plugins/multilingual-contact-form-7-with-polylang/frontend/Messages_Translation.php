@@ -64,7 +64,7 @@ class Messages_Translation {
 	function load_textdomain_mofile( $mofile ) {
 
 		if (
-			$_SERVER['REQUEST_METHOD'] !== 'POST'
+			(empty($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] !== 'POST')
 			|| ( empty( $_POST['_wpcf7_locale'] ) && empty( $_COOKIE['pll_language'] ) )
 			|| empty( $mofile )
 			|| strpos( $mofile, 'contact-form-7' ) === false

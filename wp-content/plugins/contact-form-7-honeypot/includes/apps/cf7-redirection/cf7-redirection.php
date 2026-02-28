@@ -60,7 +60,7 @@ if ( ! class_exists( 'CF7Apps_Redirection' ) && class_exists( 'CF7Apps_App' ) ) 
                             'class' => 'info',
                             'text'  => sprintf(
                                 __( 'Stuck? Check our Documentation on %s', 'cf7apps' ),
-                                '<a href="https://cf7apps.com/docs/general/redirection"><u>' . __( 'Redirection', 'cf7apps' ) . '</u></a>'
+                                '<a href="https://cf7apps.com/docs/general/redirection" target="_blank"><u>' . __( 'Redirection', 'cf7apps' ) . '</u></a>'
                             ),
                         ),
 
@@ -164,7 +164,7 @@ if ( ! class_exists( 'CF7Apps_Redirection' ) && class_exists( 'CF7Apps_App' ) ) 
                 'class' => 'info',
                 'text'  => sprintf(
                     __( 'Stuck? Check our Documentation on %s', 'cf7apps' ),
-                    '<a href="https://cf7apps.com/docs/general/redirection/"><u>' . __( 'Redirection', 'cf7apps' ) . '</u></a>'
+                    '<a href="https://cf7apps.com/docs/general/redirection/" target="_blank"><u>' . __( 'Redirection', 'cf7apps' ) . '</u></a>'
                 ),
             );
 

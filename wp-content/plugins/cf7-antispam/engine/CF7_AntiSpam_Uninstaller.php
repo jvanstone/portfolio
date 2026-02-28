@@ -1,7 +1,4 @@
 <?php
-
-namespace CF7_AntiSpam\Engine;
-
 /**
  * Fired during Uninstall.
  *
@@ -11,6 +8,8 @@ namespace CF7_AntiSpam\Engine;
  * @author     Codekraft Studio <info@codekraft.it>
  */
 
+namespace CF7_AntiSpam\Engine;
+
 /**
  * Fired during plugin deactivation.
  *
@@ -19,14 +18,14 @@ namespace CF7_AntiSpam\Engine;
 class CF7_AntiSpam_Uninstaller {
 
 	/**
-	 * It deletes all the blacklisted ip
+	 * It deletes all the blocklisted ip
 	 *
 	 * @return bool - The result of the query.
 	 */
-	public static function cf7a_clean_blacklist() {
+	public static function cf7a_clean_blocklist() {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$r = $wpdb->query( "TRUNCATE TABLE `{$wpdb->prefix}cf7a_blacklist`" );
+		$r = $wpdb->query( "TRUNCATE TABLE `{$wpdb->prefix}cf7a_blocklist`" );
 		return ! is_wp_error( $r );
 	}
 
@@ -56,14 +55,16 @@ class CF7_AntiSpam_Uninstaller {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'cf7a_wordlist' );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'cf7a_blacklist' );
+		$wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'cf7a_blocklist' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		return $wpdb->query( $wpdb->prepare(
-			"DELETE FROM %i WHERE `meta_key` = %s",
-			$wpdb->prefix . 'postmeta',
-			'_cf7a_b8_classification'
-		) );
+		return $wpdb->query(
+			$wpdb->prepare(
+				'DELETE FROM %i WHERE `meta_key` = %s',
+				$wpdb->prefix . 'postmeta',
+				'_cf7a_b8_classification'
+			)
+		);
 	}
 
 	/**
@@ -85,9 +86,9 @@ class CF7_AntiSpam_Uninstaller {
 		}
 
 		/* clear cache */
-		wp_cache_delete( 'cf7a_total_blocked_count', 'cf7a_blacklist_stats' );
-		wp_cache_delete( 'cf7a_status_breakdown', 'cf7a_blacklist_stats' );
-		wp_cache_delete( 'cf7a_reason_counts', 'cf7a_blacklist_stats' );
+		wp_cache_delete( 'cf7a_total_blocked_count', 'cf7a_blocklist_stats' );
+		wp_cache_delete( 'cf7a_status_breakdown', 'cf7a_blocklist_stats' );
+		wp_cache_delete( 'cf7a_reason_counts', 'cf7a_blocklist_stats' );
 		wp_cache_delete( 'cf7a_top_spam_words', 'cf7a_wordlist_stats' );
 		wp_cache_delete( 'cf7a_top_ham_words', 'cf7a_wordlist_stats' );
 
@@ -101,8 +102,8 @@ class CF7_AntiSpam_Uninstaller {
 	 *
 	 * @param bool $force If set to true, the cf7-antispam database and options tables delete will be forced otherwise it will be skipped.
 	 */
-	public static function uninstall( $force = true ) {
-		if ( ( defined( CF7ANTISPAM_DEBUG_EXTENDED ) && CF7ANTISPAM_DEBUG_EXTENDED === true ) || $force === false ) {
+	public static function uninstall( bool $force = true ) {
+		if ( ( defined( 'CF7ANTISPAM_DEBUG_EXTENDED' ) && true === CF7ANTISPAM_DEBUG_EXTENDED ) || false === $force ) {
 			cf7a_log( 'CONTACT FORM 7 ANTISPAM - constant "CF7ANTISPAM_DEBUG_EXTENDED" is set so options and database will NOT be deleted.' );
 			return false;
 		} else {
@@ -129,6 +130,6 @@ class CF7_AntiSpam_Uninstaller {
 			// Always remove the main site database tables and options.
 			self::cf7a_plugin_drop_tables();
 			self::cf7a_plugin_drop_options();
-		}
+		}//end if
 	}
 }

@@ -194,7 +194,8 @@ class CF7Apps {
                 'restURL'       => rest_url(),
                 'nonce'         => wp_create_nonce( 'wp_rest' ),
                 'assetsURL'     => CF7APPS_PLUGIN_DIR_URL . '/assets',
-                'appIndexURL'   =>  admin_url( 'admin.php?page=cf7apps' )
+                'appIndexURL'   =>  admin_url( 'admin.php?page=cf7apps' ),
+                'pluginVersion' => CF7APPS_VERSION,
             )
         );
 

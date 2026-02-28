@@ -222,13 +222,13 @@ class Backups {
 	private function count_attachments_with_backups() {
 		global $wpdb;
 		$wild            = '%';
-		$backup_key_like = $wild . $wpdb->esc_like( Media_Item::DEFAULT_BACKUP_KEY ) . $wild;
+		$backup_key_like = $wild . $wpdb->esc_like( Media_Item::get_default_backup_key() ) . $wild;
 		$no_backup_files = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT count(*)
 				FROM {$wpdb->postmeta}
 				WHERE meta_key=%s AND `meta_value` LIKE %s",
-				Media_Item::BACKUP_SIZES_META_KEY,
+				Media_Item::get_backup_sizes_meta_key(),
 				$backup_key_like
 			)
 		);

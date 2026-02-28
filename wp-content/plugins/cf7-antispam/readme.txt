@@ -1,10 +1,10 @@
 === AntiSpam for Contact Form 7 ===
 Contributors: codekraft, gardenboi
-Tags: antispam, blacklist, honeypot, geoip, security
+Tags: antispam, honeypot, geoip, security
 Requires at least: 6.2
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 0.7.2
+Stable tag: 0.7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,8 +25,8 @@ GeoIP - (Optional) If you need to restrict which countries or languages can emai
 ✅ Language checks (Geo-ip, http headers and browser)
 ✅ Honeypot
 ️🆕 Honeyform*
-✅ DNS Blacklists
-✅ Blacklists (with automatic ban after N failed attempts, user defined ip exclusion list)
+✅ Domain Name System Blackhole List (aka DNSBL)
+✅ blocklists (with automatic ban after N failed attempts, user defined ip exclusion list)
 ✅ Hidden fields with encrypted unique hash
 ✅ Time elapsed (with min/max values)
 ✅ Prohibited words in message/email and user agent
@@ -40,7 +40,7 @@ Already using Flamingo? Even better! Just remember to add 'flamingo_message: "[y
 Upon activating CF7A, all previously collected emails will be parsed, and B8 will learn and develop its vocabulary. This pre-trained algorithm gives you a head start. How cool is that?
 Additional Notes:
 - A new column has been added to the right side of the Flamingo inbound page, displaying the level of spaminess for each email.
-- If you unban an email on the Flamingo "inbound" page, the corresponding IP will be removed from the blacklist. However, marking an email as spam will not blacklist the IP again.
+- If you unban an email on the Flamingo "inbound" page, the corresponding IP will be removed from the blocklist. However, marking an email as spam will not blocklist the IP again.
 - Before activating this plugin, please make sure to mark all spam emails as spam in the Flamingo inbound section. This auto-training process will help the B8 algorithm.
 - If you receive a spam message, please avoid deleting it from the "ham" section. Instead, place it in the spam section to teach B8 how to differentiate between spam and legitimate messages.
 
@@ -121,7 +121,7 @@ The system used to evaluate the e-mail is a non-proportional scoring system and 
 
 =What do you mean by Standard Spam Filters=
 
-Some standard test are Elapsed time, Auto-Blacklisting, Prohibited IP/strings and, in addition, we got some advanced test like HoneyPots, HoneyForms and the browser FingerPrinting.
+Some standard test are Elapsed time, Auto-Blocklisting, Prohibited IP/strings and, in addition, we got some advanced test like HoneyPots, HoneyForms and the browser FingerPrinting.
 
 =*HoneyForm, or you mean Honeypot?=
 
@@ -167,26 +167,45 @@ Enables **debug mode** (wp-debug has to be enabled) - verbose mode, prints email
 
 `define( 'CF7ANTISPAM_DEBUG_EXTENDED', true);`
 
-Enable **extended debug mode** ("CF7ANTISPAM_DEBUG" has to be enabled) - disable autoban, enable advanced logging, when you uninstall the plugin, the word database, blacklist and options are not deleted.
+Enable **extended debug mode** ("CF7ANTISPAM_DEBUG" has to be enabled) - disable autoban, enable advanced logging, when you uninstall the plugin, the word database, blocklist and options are not deleted.
 
 
 == Changelog ==
 
+= 0.7.4 =
+* Fix: Improve message sanitization: handle arrays, skip empty/non-string values, and refine length checks (thanks to @sleepygoth for reporting it)
+
+= 0.7.3 =
+* Fix: Dismissing the "Flamingo Message" notice now works correctly (thanks to @WORX Developer for reporting it)
+* Enhancement: Improved spam filter performance with additional fallbacks for edge cases
+* Security: Email strings are now properly sanitized before being sent
+* Enhancement: New dashboard empty-state view
+* Enhancement: Added JS selector for allowed/disallowed countries and languages
+* Typo: Replaced "blacklist" with "blocklist" and "whitelist" with "allowlist" (thanks to @WORX Developer for waning me about this mistake)
+* Enhancement: New summary table added at the top of the settings page to display form configuration status
+* Enhancement: Cache compatibility improvements
+* Enhancement: Removed UCEPROTECT from predefined blocklists: We have optimized the default DNSBL configuration by removing the uceprotect service. This strategic change reduces the risk of false positives for legitimate users hosted on shared environments and improves the overall form submission speed by eliminating redundant DNS queries.
+* Fix: Fix cf7a_ban_by_ip reason parameter: Addressed a bug where the ban reason was not correctly passed to the blocking function. Logs will now accurately reflect the specific trigger (e.g., Honeypot violation, DNSBL match) that caused an IP ban, restoring full observability for administrators (Thanks to @sdellenb - PR #163).
+* Compatibility: Implemented a fix for WEBGL_debug_renderer_info in iOS/Safari on newer iOS devices. This resolves potential JavaScript execution errors during browser fingerprinting, ensuring seamless form functionality on iPhones and iPads with strict privacy settings.
+* Enhancement: Added blueprint.json: Introduced a configuration file for WordPress Playground. Contributors and users can now instantly spin up a browser-based testing environment for the plugin without local setup.
+* Enhancement: Updated unit tests to display GeoIP database information if available. This enhances local debugging capabilities by verifying that geolocation data is loaded correctly during test runs.
+* Enhancement: Applied comprehensive PHP linting to the Admin interface files, enforcing WordPress Coding Standards for better maintainability.
+
 = 0.7.2 =
 * Update fallback (thanks for the idea to @lemurnick)
 * Fix for missing enqueue in some cases (thanks to @ohhcee, @o2xav, @WORX Developer for the feedbacks)
-* Blacklist filters cleanup
+* Blocklist filters cleanup
 * Registers the spam checks individually
 * Updated encrypt/decrypt function
 
 = 0.7.1 =
-* Fix: Fixes a wrong escape placeholder in the prepare SQL query that was preventing to check if an IP was blacklisted. (thanks to @jackrus60 for the report)
+* Fix: Fixes a wrong escape placeholder in the prepare SQL query that was preventing to check if an IP was blocklisted. (thanks to @jackrus60 for the report)
 
 = 0.7.0 =
 * Enhancement: Updated Admin User Interface (UI).
 * Enhancement: Added a new debug information section to display the status of GeoIP, REST API, and DNSBL functionality.
-* Enhancement: Blacklist Export Feature: Users can now export the blacklist.
-* Enhancement: A date column has been added to the blacklist database table.
+* Enhancement: Blocklist Export Feature: Users can now export the blocklist.
+* Enhancement: A date column has been added to the blocklist database table.
 * Fix: The name attribute for Honeypots now correctly reflects the name chosen by the user (thanks to @@developeratworx for reporting this issue!).
 * Fix: Improved code security by implementing prepared statements for all database queries and adding sanitization and escaping where previously missing.
 * Fix: Refactored and reorganized the src folder structure for better code organization and maintainability.
@@ -265,7 +284,7 @@ Enable **extended debug mode** ("CF7ANTISPAM_DEBUG" has to be enabled) - disable
 
 = 0.4.2 =
 * Dashboard widget updated (adds a new filter 'cf7a_dashboard_max_mail_count' to limit the maximum value of displayed mail, default 25)
-* UI enhancements - labels in the flamingo inbound page and the blacklist table
+* UI enhancements - labels in the flamingo inbound page and the blocklist table
 * Displays a random security tip at the top of cf7-antispam settings
 * Standalone geoip check (previously it was mandatory to enable the language checks in order to enable geo-ip)
 * Under certain conditions an automatic ban is carried out and the e-mail is not processed to avoid unnecessary consumption of resources
@@ -389,6 +408,7 @@ MeliEve - [#42](https://github.com/wp-blocks/cf7-antispam/pull/42) Fix "internal
 MeliEve - [#61](https://github.com/wp-blocks/cf7-antispam/pull/61)  Handle deferrer script loading
 Zodiac1978 - [#67](https://github.com/wp-blocks/cf7-antispam/pull/67) Remove warning for unsafe email configuration w/o protection
 JohnHooks - [#66](https://github.com/wp-blocks/cf7-antispam/pull/61) Readme + plugin env
+sdellenb - [#66](https://github.com/wp-blocks/cf7-antispam/pull/163) Fix $reason parameter for calling cf7a_ban_by_ip
 
 == Special thanks ==
 This project is tested with BrowserStack. [Browserstack](https://www.browserstack.com/)

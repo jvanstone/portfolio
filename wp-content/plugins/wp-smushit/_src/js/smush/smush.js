@@ -993,7 +993,6 @@ class Smush {
 		// Show upsell cdn.
 		const upsellCdn = document.querySelector('.wp-smush-upsell-cdn');
 		if ( upsellCdn ) {
-			upsellCdn.querySelector('p').innerHTML = wp_smush_msgs.processed_cdn_for_free;
 			upsellCdn.classList.remove('sui-hidden');
 		}
 	}

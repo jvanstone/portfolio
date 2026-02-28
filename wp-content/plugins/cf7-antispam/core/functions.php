@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Some utility function used alongside the plugin
  *
@@ -17,35 +16,38 @@
  * @return mixed|string - The real ip address.
  */
 function cf7a_get_real_ip() {
+	// Cloudflare: Most reliable when behind Cloudflare CDN.
+	// phpcs:ignore WordPressVIPMinimum.Variables.ServerVariables.UserControlledHeaders
+	$http_cf_connecting_ip = ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ? filter_var( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ), FILTER_VALIDATE_IP ) : false;
+	if ( ! empty( $http_cf_connecting_ip ) ) {
+		return $http_cf_connecting_ip;
+	}
+
+	// X-Forwarded-For: Standard proxy header, first IP is the client.
 	// phpcs:ignore WordPressVIPMinimum.Variables.ServerVariables.UserControlledHeaders, WordPressVIPMinimum.Variables.RestrictedVariables.cache_constraints___HTTP_X_FORWARDED_FOR__
 	$http_x_forwarded_for = ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) : false;
 	if ( ! empty( $http_x_forwarded_for ) ) {
 		return filter_var( trim( current( explode( ',', $http_x_forwarded_for ) ) ), FILTER_VALIDATE_IP );
 	}
 
-	$http_x_real_ip = ! empty( $_SERVER['HTTP_X_REAL_IP'] ) ? filter_var( wp_unslash( $_SERVER['HTTP_X_REAL_IP'] ), FILTER_VALIDATE_IP ) : false;
-	if ( ! empty( $http_x_real_ip ) ) {
-		return $http_x_real_ip;
-	}
-
+	// REMOTE_ADDR: Fallback, may be proxy IP if behind a reverse proxy.
 	// phpcs:ignore WordPressVIPMinimum.Variables.ServerVariables.UserControlledHeaders, WordPressVIPMinimum.Variables.RestrictedVariables.cache_constraints___SERVER__REMOTE_ADDR__
 	$remote_addr = ! empty( $_SERVER['REMOTE_ADDR'] ) ? filter_var( wp_unslash( $_SERVER['REMOTE_ADDR'] ), FILTER_VALIDATE_IP ) : false;
 	if ( ! empty( $remote_addr ) ) {
 		return $remote_addr;
 	}
 
-	$http_client_ip = ! empty( $_SERVER['HTTP_CLIENT_IP'] ) ? filter_var( wp_unslash( $_SERVER['HTTP_CLIENT_IP'] ), FILTER_VALIDATE_IP ) : false;
-	if ( ! empty( $http_client_ip ) ) {
-		return $http_client_ip;
-	}
-
-	$http_cf_connecting_ip = ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ? filter_var( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ), FILTER_VALIDATE_IP ) : false;
-	if ( ! empty( $http_cf_connecting_ip ) ) {
-		return $http_cf_connecting_ip;
-	}
+	return '';
 }
 
-function cf7a_strip_weight( $str ) {
+/**
+ * Strips the weight from a language code.
+ *
+ * @param string $str The language code.
+ *
+ * @return string The language code without the weight.
+ */
+function cf7a_strip_weight( string $str ): string {
 	$str = trim( $str );
 	if ( strpos( $str, ';' ) !== false ) {
 		$str = substr( $str, 0, strpos( $str, ';' ) );
@@ -57,9 +59,10 @@ function cf7a_strip_weight( $str ) {
  * Generate an array of languages and locales based on the accept language header.
  *
  * @param string $accept_language The accept language header.
+ *
  * @return string[] The array of language-locale codes.
  */
-function cf7a_init_languages_locales_array( $accept_language ) {
+function cf7a_init_languages_locales_array( string $accept_language ): array {
 	return array_reduce(
 		explode( ',', $accept_language ),
 		function ( $res, $el ) {
@@ -78,7 +81,7 @@ function cf7a_init_languages_locales_array( $accept_language ) {
  *
  * @return array assoc array of languages and locales
  */
-function cf7a_get_browser_languages_locales_array( $languages_locales ) {
+function cf7a_get_browser_languages_locales_array( string $languages_locales ): array {
 	$result = array_reduce(
 		explode( ',', $languages_locales ),
 		function ( $res, $el ) {
@@ -178,6 +181,7 @@ function cf7a_get_accept_locales_array( $locales ) {
  * @param array $schedules This is the name of the hook that we're adding a schedule to.
  */
 function cf7a_add_cron_steps( $schedules ) {
+	// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 	return array_merge(
 		$schedules,
 		array(
@@ -192,7 +196,7 @@ function cf7a_add_cron_steps( $schedules ) {
 		)
 	);
 }
-
+// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 add_filter( 'cron_schedules', 'cf7a_add_cron_steps' );
 
 /**
@@ -239,7 +243,18 @@ function cf7a_crypt( $value, $cipher = 'aes-256-cbc' ) {
 		return $value;
 	}
 
-	return openssl_encrypt( $value, $cipher, wp_salt( 'nonce' ), $options = 0, substr( wp_salt( 'nonce' ), 0, 16 ) );
+	// 1. Calculate the specific IV length required by this cipher
+	$iv_len = openssl_cipher_iv_length( $cipher );
+
+	// 2. Prepare the IV (handle 0-length ciphers like ECB)
+	$iv = '';
+	if ( $iv_len > 0 ) {
+		// Cut the salt to exactly the length required
+		$iv = substr( wp_salt( 'nonce' ), 0, $iv_len );
+	}
+
+	// 3. Encrypt using the dynamic IV
+	return openssl_encrypt( $value, $cipher, wp_salt( 'nonce' ), 0, $iv );
 }
 
 /**
@@ -256,7 +271,18 @@ function cf7a_decrypt( string $value, string $cipher = 'aes-256-cbc' ): string {
 			return $value;
 		}
 
-		return openssl_decrypt( $value, $cipher, wp_salt( 'nonce' ), $options = 0, substr( wp_salt( 'nonce' ), 0, 16 ) );
+		// 1. Calculate the specific IV length required by this cipher
+		$iv_len = openssl_cipher_iv_length( $cipher );
+
+		// 2. Prepare the IV (must match the one used during encryption)
+		$iv = '';
+		if ( $iv_len > 0 ) {
+			$iv = substr( wp_salt( 'nonce' ), 0, $iv_len );
+		}
+
+		// 3. Decrypt using the dynamic IV
+		return openssl_decrypt( $value, $cipher, wp_salt( 'nonce' ), 0, $iv );
+
 	} catch ( Exception $e ) {
 		return $value;
 	}
@@ -343,19 +369,19 @@ function cf7a_format_status( $rank ) {
  * It takes an array and returns a string with the array's keys and values separated by a colon and a space, and each
  * key/value pair separated by a semicolon and a space
  *
- * @param array $array - the array of reasons to ban.
+ * @param array $arr - the array of reasons to ban.
  * @param bool  $is_html - true to return an HTML string.
  *
- * @return false|string Compress arrays into "key:value; " pair
+ * @return string Compress arrays into "key:value; " pair
  */
-function cf7a_compress_array( $array, $is_html = false ) {
-	if ( ! is_array( $array ) ) {
-		return false;
+function cf7a_compress_array( array $arr, bool $is_html = false ): string {
+	if ( ! is_array( $arr ) ) {
+		return '';
 	}
 	$is_html = intval( $is_html );
 
 	return implode(
-		'<br /> ',
+		$is_html ? '<br /> ' : ', ',
 		array_map(
 			function ( $v, $k ) use ( $is_html ) {
 				// Handles values by type
@@ -365,22 +391,22 @@ function cf7a_compress_array( $array, $is_html = false ) {
 					} else {
 						// Convert array to readable format
 						$v = '[' . implode(
-								', ',
-								array_map(
-									function ( $item ) {
-										return is_array( $item ) ? json_encode( $item ) : (string) $item;
-									},
-									$v
-								)
-							) . ']';
+							', ',
+							array_map(
+								function ( $item ) {
+									return is_array( $item ) ? wp_json_encode( $item ) : (string) $item;
+								},
+								$v
+							)
+						) . ']';
 					}
 				} elseif ( is_object( $v ) ) {
-					$v = json_encode( $v );
+					$v = wp_json_encode( $v );
 				} elseif ( is_bool( $v ) ) {
 					$v = $v ? 'true' : 'false';
 				} elseif ( is_null( $v ) ) {
 					$v = 'null';
-				}
+				}//end if
 
 				// Handles HTML output
 				if ( $is_html ) {
@@ -389,8 +415,8 @@ function cf7a_compress_array( $array, $is_html = false ) {
 					return sprintf( '%s: %s', $k, $v );
 				}
 			},
-			$array,
-			array_keys( $array )
+			$arr,
+			array_keys( $arr )
 		)
 	);
 }
@@ -405,17 +431,46 @@ function cf7a_compress_array( $array, $is_html = false ) {
  * @return void
  */
 function cf7a_log( $log_data, $log_level = 0 ) {
-	if ( ! empty( $log_data ) ) {
-		if ( 0 === $log_level || 1 >= $log_level && CF7ANTISPAM_DEBUG || 2 >= $log_level && CF7ANTISPAM_DEBUG_EXTENDED ) {
-			// phpcs:disable WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log(
-				is_string( $log_data )
-					? CF7ANTISPAM_LOG_PREFIX . $log_data
-					// phpcs:disable WordPress.PHP.DevelopmentFunctions.error_log_print_r
-					: CF7ANTISPAM_LOG_PREFIX . print_r( $log_data, true )
+	if ( empty( $log_data ) ) {
+		return;
+	}
+
+	// Define visibility flags
+	$debug_enabled          = defined( 'CF7ANTISPAM_DEBUG' ) && CF7ANTISPAM_DEBUG;
+	$extended_debug_enabled = defined( 'CF7ANTISPAM_DEBUG_EXTENDED' ) && CF7ANTISPAM_DEBUG_EXTENDED;
+
+	$should_log = false;
+
+	// Cascading logic
+	if ( 0 === $log_level ) {
+		$should_log = true;
+	} elseif ( 1 === $log_level && ( $debug_enabled || $extended_debug_enabled ) ) {
+		$should_log = true;
+	} elseif ( 2 === $log_level && $extended_debug_enabled ) {
+		$should_log = true;
+	}
+
+	if ( $should_log ) {
+		// Mask sensitive data if NOT in extended debug mode
+		$is_extended = defined( 'CF7ANTISPAM_DEBUG_EXTENDED' ) && CF7ANTISPAM_DEBUG_EXTENDED;
+
+		if ( is_string( $log_data ) && ! $is_extended ) {
+			// Hash IP addresses (IPv4 pattern)
+			$log_data = preg_replace_callback(
+				'/\b(?:\d{1,3}\.){3}\d{1,3}\b/',
+				function ( $matches ) {
+					return 'IP:' . substr( md5( $matches[0] ), 0, 8 );
+				},
+				$log_data
 			);
 		}
-	}
+
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
+		$output = is_string( $log_data ) ? $log_data : print_r( $log_data, true );
+
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		error_log( CF7ANTISPAM_LOG_PREFIX . $output );
+	}//end if
 }
 
 /**
@@ -427,21 +482,21 @@ function cf7a_log( $log_data, $log_level = 0 ) {
  * @return string the clean tag string
  */
 function cf7a_get_mail_meta( $tag ) {
-	return is_string( $tag ) ? substr( $tag, 2, - 2 ) : '';
+	return is_string( $tag ) ? substr( $tag, 2, -2 ) : '';
 }
 
 
 /**
  * If the message tag contains a space, it's a multiple meta tag,
- * so split it up and return the value of the meta tag
+ * so split it up and return the value of the meta-tag
  *
  * @param array  $posted_data The form data array.
  * @param string $message_tag The tag of the field you want to retrieve.
- * @param string $explode_pattern Used to split multiple cf7 user tags .
+ * @param string $explode_pattern Used to split multiple cf7 user tags.
  *
- * @return string|false the field requested
+ * @return string | false the field requested
  */
-function cf7a_maybe_split_mail_meta( $posted_data, $message_tag, $explode_pattern = '] [' ) {
+function cf7a_maybe_split_mail_meta( array $posted_data, string $message_tag, string $explode_pattern = '] [' ) {
 	if ( strpos( $message_tag, $explode_pattern ) !== false ) {
 		$message = '';
 		foreach ( explode( $explode_pattern, $message_tag ) as $message_tag_chunk ) {
@@ -452,9 +507,9 @@ function cf7a_maybe_split_mail_meta( $posted_data, $message_tag, $explode_patter
 		}
 
 		return $message;
-	} else {
-		return isset( $posted_data[ $message_tag ] ) ? sanitize_textarea_field( $posted_data[ $message_tag ] ) : false;
 	}
+
+	return isset( $posted_data[ $message_tag ] ) ? sanitize_textarea_field( $posted_data[ $message_tag ] ) : '';
 }
 
 /**
@@ -469,7 +524,7 @@ function cf7a_str_array_to_uint_array( $str_array ) {
 		array_filter(
 			$str_array,
 			function ( $value ) {
-				return is_int( $value ) || is_numeric( $value ) && $value > 0 && intval( $value ) == $value;
+				return is_int( $value ) || ( is_numeric( $value ) && $value > 0 && intval( $value ) === $value );
 			}
 		)
 	);

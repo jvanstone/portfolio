@@ -49,7 +49,7 @@ class Media_Library extends Abstract_Module {
 	 *
 	 * @param Core $core  Core instance.
 	 */
-	public function __construct( Core $core ) {
+	public function __construct( $core ) {
 		parent::__construct();
 		$this->core        = $core;
 		$this->array_utils = new Array_Utils();
@@ -419,11 +419,11 @@ class Media_Library extends Abstract_Module {
 		$meta_query =  array(
 			'relation' => 'AND',
 			array(
-				'key'     => Media_Item_Optimizer::ERROR_META_KEY,
+				'key'     => Media_Item_Optimizer::get_error_meta_key(),
 				'compare' => 'EXISTS',
 			),
 			array(
-				'key'     => Media_Item::IGNORED_META_KEY,
+				'key'     => Media_Item::get_ignored_meta_key(),
 				'compare' => 'NOT EXISTS',
 			),
 		);
@@ -455,7 +455,7 @@ class Media_Library extends Abstract_Module {
 	private function query_ignored() {
 		return array(
 			array(
-				'key'     => Media_Item::IGNORED_META_KEY,
+				'key'     => Media_Item::get_ignored_meta_key(),
 				'compare' => 'EXISTS',
 			),
 		);
@@ -712,7 +712,7 @@ class Media_Library extends Abstract_Module {
 	 * @return string  HTML content or array of results.
 	 */
 	public function generate_markup( $id ) {
-		$media_lib_item = new Media_Library_Row( $id );
+		$media_lib_item = Media_Library_Row::get_instance( $id );
 		return $media_lib_item->generate_markup();
 	}
 

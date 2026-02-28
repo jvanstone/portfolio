@@ -3,9 +3,9 @@ Contributors: andreasmuench
 Donate link: https://andreasmuench.de/wordpress-programmierer
 Tags: contact form 7, polylang, multilingual, translate, language
 Requires at least: 5.7.0
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 5.6
-Stable tag: 1.0.12
+Stable tag: 1.0.13
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -67,6 +67,10 @@ Just go to the support forums and kindly ask for it, then we´ll see what we can
 3. Example contact form in different languages
 
 == Changelog ==
+
+= 1.0.13 =
+* fix PHP warnings: PHP Deprecated: Creation of dynamic property PLL_Language::$xxx is deprecated
+* fix PHP warning: Undefined array key “REQUEST_METHOD”
 
 = 1.0.12 =
 * fix warning notice that _load_textdomain_just_in_time was called too early

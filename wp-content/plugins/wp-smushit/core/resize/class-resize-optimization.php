@@ -15,8 +15,8 @@ use WP_Error;
 use WP_Image_Editor;
 
 class Resize_Optimization extends Media_Item_Optimization {
-	const KEY = 'resize_optimization';
-	const META_KEY = 'wp-smush-resize_savings';
+	private static $key = 'resize_optimization';
+	private static $meta_key = 'wp-smush-resize_savings';
 	/**
 	 * @var Media_Item
 	 */
@@ -70,8 +70,8 @@ class Resize_Optimization extends Media_Item_Optimization {
 		$this->upload_dir = new Upload_Dir();
 	}
 
-	public function get_key() {
-		return self::KEY;
+	public static function get_key() {
+		return self::$key;
 	}
 
 	public function get_name() {
@@ -102,7 +102,7 @@ class Resize_Optimization extends Media_Item_Optimization {
 	public function save() {
 		$meta = $this->make_meta();
 		if ( ! empty( $meta ) ) {
-			update_post_meta( $this->media_item->get_id(), self::META_KEY, $meta );
+			update_post_meta( $this->media_item->get_id(), self::$meta_key, $meta );
 			$this->reset();
 		}
 	}
@@ -428,7 +428,7 @@ class Resize_Optimization extends Media_Item_Optimization {
 	}
 
 	private function prepare_savings_meta() {
-		$meta = get_post_meta( $this->media_item->get_id(), self::META_KEY, true );
+		$meta = get_post_meta( $this->media_item->get_id(), self::$meta_key, true );
 
 		return empty( $meta )
 			? array()
@@ -443,7 +443,7 @@ class Resize_Optimization extends Media_Item_Optimization {
 	}
 
 	public function delete_data() {
-		delete_post_meta( $this->media_item->get_id(), self::META_KEY );
+		delete_post_meta( $this->media_item->get_id(), self::$meta_key );
 
 		$this->reset();
 	}

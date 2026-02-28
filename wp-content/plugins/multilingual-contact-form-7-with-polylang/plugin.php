@@ -3,7 +3,7 @@
  * Plugin Name: Multilingual Contact Form 7 with Polylang
  * Plugin URI:
  * Description: Enables translation and use of the same forms in different languages of Contact Form 7 forms with Polylang
- * Version: 1.0.12
+ * Version: 1.0.13
  * Author: Andreas Münch
  * Author URI: https://andreasmuench.de
  * Text Domain: multilangual-cf7-polylang

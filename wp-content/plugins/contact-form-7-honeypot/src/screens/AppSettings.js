@@ -130,10 +130,21 @@ const AppSettings = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [tabValue, setTabValue] = useState('1');
     const [hasTabs, setHasTabs] = useState(false);
+    const [showAcfNotice, setShowAcfNotice] = useState(false);
     const [formData, setFormData] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [notice, setNotice] = useState({ show: false, text: '' });
     const [ openMap, setOpenMap ] = useState( {} );
+
+    // Scroll to top when ACF notice is shown
+    useEffect(() => {
+        if (showAcfNotice && appSettings && appSettings.requires_acf && !appSettings.acf_available) {
+            // Use setTimeout to ensure DOM has updated
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+        }
+    }, [showAcfNotice]);
 
     useEffect(() => {
 
@@ -296,8 +307,13 @@ const AppSettings = () => {
         let requiredMessage = '';
 
         // Check if the app is enabled (adjust the key if needed)
-        // If your toggle field is named 'is_enabled', this will work:
         const isEnabled = ( formData.is_enabled === undefined || formData.is_enabled === false ) ? false : true;
+
+        // Check if ACF is required but not available when trying to enable
+        if (isEnabled && appSettings.requires_acf && !appSettings.acf_available) {
+            toast.error( __( 'This integration requires the Advanced Custom Fields plugin to be installed and active.', 'cf7apps' ) );
+            return;
+        }
 
         // Only validate required fields if app is enabled
         if (isEnabled) {
@@ -481,6 +497,7 @@ const AppSettings = () => {
                                                             placeholder={palceholder}
                                                             value={formData[fieldKey]}
                                                             onChange={handleInputChange}
+                                                            min={field.min}
                                                         />
                                                     )
                                                 } 
@@ -493,7 +510,27 @@ const AppSettings = () => {
                                                             className={className}
                                                             isSelected={formData[fieldKey]}
                                                             description={ parse( String(field.description) ) }
+                                                            disabled={field.disabled}
                                                             onChange={(e) => {
+                                                                // Show red warning notice if trying to enable without ACF
+                                                                if (fieldKey === 'is_enabled' && 
+                                                                    appSettings.requires_acf && 
+                                                                    !appSettings.acf_available && 
+                                                                    !formData[fieldKey]) {
+                                                                    // Reset notice state to ensure useEffect triggers
+                                                                    setShowAcfNotice(false);
+                                                                    // Use setTimeout to ensure state reset before setting to true
+                                                                    setTimeout(() => {
+                                                                        setShowAcfNotice(true);
+                                                                        // Scroll to top immediately
+                                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                    }, 10);
+                                                                    // Hide notice after 5 seconds
+                                                                    setTimeout(() => setShowAcfNotice(false), 5000);
+                                                                    return;
+                                                                }
+                                                                // Hide notice if enabling successfully
+                                                                setShowAcfNotice(false);
                                                                 setFormData({
                                                                     ...formData,
                                                                     [fieldKey]: ! formData[fieldKey]
@@ -630,6 +667,7 @@ const AppSettings = () => {
                                             placeholder={palceholder}
                                             value={formData[fieldKey]}
                                             onChange={handleInputChange}
+                                            min={field.min}
                                         />
                                     )
                                 } 
@@ -640,12 +678,33 @@ const AppSettings = () => {
                                             label={field.title}
                                             className={className}
                                             isSelected={formData[fieldKey]}
-                                            onChange={(e) => {
-                                                setFormData({
-                                                    ...formData,
-                                                    [fieldKey]: ! formData[fieldKey]
-                                                });
-                                            }}
+                                            description={ parse( String(field.description) ) }
+                                            disabled={field.disabled}
+                                                            onChange={(e) => {
+                                                                // Show red warning notice if trying to enable without ACF
+                                                                if (fieldKey === 'is_enabled' && 
+                                                                    appSettings.requires_acf && 
+                                                                    !appSettings.acf_available && 
+                                                                    !formData[fieldKey]) {
+                                                                    // Reset notice state to ensure useEffect triggers
+                                                                    setShowAcfNotice(false);
+                                                                    // Use setTimeout to ensure state reset before setting to true
+                                                                    setTimeout(() => {
+                                                                        setShowAcfNotice(true);
+                                                                        // Scroll to top immediately
+                                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                    }, 10);
+                                                                    // Hide notice after 5 seconds
+                                                                    setTimeout(() => setShowAcfNotice(false), 5000);
+                                                                    return;
+                                                                }
+                                                                // Hide notice if enabling successfully
+                                                                setShowAcfNotice(false);
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    [fieldKey]: ! formData[fieldKey]
+                                                                });
+                                                            }}
                                         />
                                     )
                                 }
@@ -742,9 +801,20 @@ const AppSettings = () => {
         <div className="cf7apps-body">
             <div className="cf7apps-app-setting-header">
                 <div className="cf7apps-container">
-                    <h1>{ sprintf( __( '%s Settings', 'cf7apps' ), appSettings.title ) }</h1>
+                    <h1>{ appSettings.id === 'acf-integration' ? appSettings.title : sprintf( __( '%s Settings', 'cf7apps' ), appSettings.title ) }</h1>
                 </div>
             </div>
+            {showAcfNotice && appSettings.requires_acf && !appSettings.acf_available && (
+                <div className="cf7apps-container" style={{ marginTop: '20px', marginBottom: '20px' }}>
+                    <CF7AppsNotice
+                        type="danger"
+                        text={sprintf(
+                            __( 'This integration requires the Advanced Custom Fields plugin to be installed and active. %s', 'cf7apps' ),
+                            '<a href="' + (window.location.origin + '/wp-admin/plugin-install.php?s=advanced-custom-fields&tab=search&type=term') + '" style="text-decoration: underline; font-weight: bold;">' + __( 'Install ACF Plugin', 'cf7apps' ) + '</a>'
+                        )}
+                    />
+                </div>
+            )}
             <div className="cf7apps-app-setting-section">
                 <div className="cf7apps-container">
                     { Settings() }

@@ -163,6 +163,15 @@ class Helpers
                 // quickly fake language array
                 $lang_data = (array)$lang_term;
                 $lang_data['term_props']['language'] = (array)$lang_term;
+				// unset properties to prevent Deprecation Warning:
+	            // Creation of dynamic property PLL_Language::$filter is deprecated
+	            unset($lang_data['filter']);
+	            unset($lang_data['count']);
+	            unset($lang_data['parent']);
+	            unset($lang_data['description']);
+	            unset($lang_data['taxonomy']);
+	            unset($lang_data['term_taxonomy_id']);
+	            unset($lang_data['term_order']);
                 $language = new \PLL_Language($lang_data);
             }
         }

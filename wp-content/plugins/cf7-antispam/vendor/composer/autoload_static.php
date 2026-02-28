@@ -7,21 +7,21 @@ namespace Composer\Autoload;
 class ComposerStaticInitecc492adc104efcc09125896a0bf8e84
 {
     public static $prefixLengthsPsr4 = array (
-        'b' => 
+        'b' =>
         array (
             'b8\\' => 3,
         ),
-        'M' => 
+        'M' =>
         array (
             'MaxMind\\WebService\\' => 19,
             'MaxMind\\Exception\\' => 18,
             'MaxMind\\Db\\' => 11,
         ),
-        'G' => 
+        'G' =>
         array (
             'GeoIp2\\' => 7,
         ),
-        'C' => 
+        'C' =>
         array (
             'Composer\\CaBundle\\' => 18,
             'CF7_AntiSpam\\Engine\\' => 20,
@@ -31,39 +31,39 @@ class ComposerStaticInitecc492adc104efcc09125896a0bf8e84
     );
 
     public static $prefixDirsPsr4 = array (
-        'b8\\' => 
+        'b8\\' =>
         array (
             0 => __DIR__ . '/../..' . '/core/b8/b8',
         ),
-        'MaxMind\\WebService\\' => 
+        'MaxMind\\WebService\\' =>
         array (
             0 => __DIR__ . '/..' . '/maxmind/web-service-common/src/WebService',
         ),
-        'MaxMind\\Exception\\' => 
+        'MaxMind\\Exception\\' =>
         array (
             0 => __DIR__ . '/..' . '/maxmind/web-service-common/src/Exception',
         ),
-        'MaxMind\\Db\\' => 
+        'MaxMind\\Db\\' =>
         array (
             0 => __DIR__ . '/..' . '/maxmind-db/reader/src/MaxMind/Db',
         ),
-        'GeoIp2\\' => 
+        'GeoIp2\\' =>
         array (
             0 => __DIR__ . '/..' . '/geoip2/geoip2/src',
         ),
-        'Composer\\CaBundle\\' => 
+        'Composer\\CaBundle\\' =>
         array (
             0 => __DIR__ . '/..' . '/composer/ca-bundle/src',
         ),
-        'CF7_AntiSpam\\Engine\\' => 
+        'CF7_AntiSpam\\Engine\\' =>
         array (
             0 => __DIR__ . '/../..' . '/engine',
         ),
-        'CF7_AntiSpam\\Core\\' => 
+        'CF7_AntiSpam\\Core\\' =>
         array (
             0 => __DIR__ . '/../..' . '/core',
         ),
-        'CF7_AntiSpam\\Admin\\' => 
+        'CF7_AntiSpam\\Admin\\' =>
         array (
             0 => __DIR__ . '/../..' . '/admin',
         ),
@@ -77,13 +77,15 @@ class ComposerStaticInitecc492adc104efcc09125896a0bf8e84
         'CF7_AntiSpam\\Admin\\CF7_AntiSpam_Admin_Tools' => __DIR__ . '/../..' . '/admin/CF7_AntiSpam_Admin_Tools.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam' => __DIR__ . '/../..' . '/core/CF7_AntiSpam.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_B8' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_B8.php',
+        'CF7_AntiSpam\\Core\\CF7_AntiSpam_Cache_Compatibility' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Cache_Compatibility.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_Filters' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Filters.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_Flamingo' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Flamingo.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_Frontend' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Frontend.php',
+        'CF7_AntiSpam\\Core\\CF7_AntiSpam_I18n' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_I18n.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_Loader' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Loader.php',
+        'CF7_AntiSpam\\Core\\CF7_AntiSpam_Public_Rest_Api' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Public_Rest_Api.php',
         'CF7_AntiSpam\\Core\\CF7_AntiSpam_Rest_Api' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_Rest_Api.php',
-        'CF7_AntiSpam\\Core\\CF7_AntiSpam_i18n' => __DIR__ . '/../..' . '/core/CF7_AntiSpam_i18n.php',
-        'CF7_AntiSpam\\Core\\CF7_Antispam_Blacklist' => __DIR__ . '/../..' . '/core/CF7_Antispam_Blacklist.php',
+        'CF7_AntiSpam\\Core\\CF7_Antispam_Blocklist' => __DIR__ . '/../..' . '/core/CF7_Antispam_Blocklist.php',
         'CF7_AntiSpam\\Core\\CF7_Antispam_Geoip' => __DIR__ . '/../..' . '/core/CF7_Antispam_Geoip.php',
         'CF7_AntiSpam\\Core\\CF7_Antispam_Service' => __DIR__ . '/../..' . '/core/CF7_Antispam_Service.php',
         'CF7_AntiSpam\\Engine\\CF7_AntiSpam_Activator' => __DIR__ . '/../..' . '/engine/CF7_AntiSpam_Activator.php',

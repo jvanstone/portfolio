@@ -10,7 +10,7 @@ use WDEV_Logger;
 use WP_Error;
 
 class Media_Item_Optimizer {
-	const ERROR_META_KEY = 'wp-smush-optimization-errors';
+	private static $error_meta_key = 'wp-smush-optimization-errors';
 
 	/**
 	 * @var Media_Item_Optimization[]
@@ -416,7 +416,7 @@ class Media_Item_Optimizer {
 
 	private function fetch_errors_from_meta() {
 		$wp_error = new WP_Error();
-		$errors   = get_post_meta( $this->media_item->get_id(), self::ERROR_META_KEY, true );
+		$errors   = get_post_meta( $this->media_item->get_id(), self::$error_meta_key, true );
 
 		if ( empty( $errors ) || ! is_array( $errors ) ) {
 			return $wp_error;
@@ -446,7 +446,7 @@ class Media_Item_Optimizer {
 		}
 
 		if ( ! empty( $errors_array ) ) {
-			update_post_meta( $this->media_item->get_id(), self::ERROR_META_KEY, $errors_array );
+			update_post_meta( $this->media_item->get_id(), self::$error_meta_key, $errors_array );
 		}
 	}
 
@@ -460,7 +460,7 @@ class Media_Item_Optimizer {
 
 	private function delete_previous_optimization_errors() {
 		if ( $this->has_errors() ) {
-			delete_post_meta( $this->media_item->get_id(), self::ERROR_META_KEY );
+			delete_post_meta( $this->media_item->get_id(), self::$error_meta_key );
 			$this->set_errors( null );
 		}
 	}
@@ -479,7 +479,7 @@ class Media_Item_Optimizer {
 	 *
 	 * @param WP_Error $errors Restoration errors.
 	 */
-	private function set_restoration_errors( WP_Error $errors ) {
+	private function set_restoration_errors( $errors ) {
 		$this->restoration_errors = $errors;
 	}
 
@@ -495,4 +495,14 @@ class Media_Item_Optimizer {
 
 		return $this->restoration_errors;
 	}
+
+	/**
+	 * Get error_meta_key.
+	 *
+	 * @return string
+	 */
+	public static function get_error_meta_key() {
+		return self::$error_meta_key;
+	}
+
 }

@@ -51,7 +51,7 @@ if ( ! class_exists( 'CF7Apps_Webhook' ) && class_exists( 'CF7Apps_App' ) ) :
                         'notice' => array(
                             'type'  => 'notice',
                             'class' => 'info',
-                            'text'  => sprintf( __( 'Stuck? Check our Documentation on %s', 'cf7apps' ), '<a href="https://cf7apps.com/docs/integration/webhook"><u>' . __( 'Webhook', 'cf7apps' ) . '</u></a>' ),
+                            'text'  => sprintf( __( 'Stuck? Check our Documentation on %s', 'cf7apps' ), '<a href="https://cf7apps.com/docs/integration/webhook" target="_blank"><u>' . __( 'Webhook', 'cf7apps' ) . '</u></a>' ),
                         ),
 
                         'is_enabled' => array(
@@ -164,7 +164,7 @@ if ( ! class_exists( 'CF7Apps_Webhook' ) && class_exists( 'CF7Apps_App' ) ) :
             $settings['general']['fields']['notice'] = array(
                 'type'  => 'notice',
                 'class' => 'info',
-                'text'  => sprintf( __( 'Stuck? Check our Documentation on %s', 'cf7apps' ), '<a href="https://cf7apps.com/docs/integration/webhook"><u>' . __( 'Webhook', 'cf7apps' ) . '</u></a>' ),
+                'text'  => sprintf( __( 'Stuck? Check our Documentation on %s', 'cf7apps' ), '<a href="https://cf7apps.com/docs/integration/webhook" target="_blank"><u>' . __( 'Webhook', 'cf7apps' ) . '</u></a>' ),
             );
 
 
@@ -360,14 +360,10 @@ if ( ! class_exists( 'CF7Apps_Webhook' ) && class_exists( 'CF7Apps_App' ) ) :
             // Get individual form settings
             $individual_settings = $this->get_individual_option( $form_id );
 
-            // Check if global settings are enabled
+            // Check if global settings are enabled (used as fallback when a form
+            // does not have its own custom settings).
             $global_settings_enabled = $this->get_option( 'global_settings' );
             
-            // Webhook only works if global settings are enabled
-            if ( ! $global_settings_enabled ) {
-                return;
-            }
-    
             // Check if form has custom settings (excluding is_enabled toggle)
             $has_custom_settings = ! empty( $individual_settings ) && (
                 isset( $individual_settings['webhook_url'] ) ||
@@ -390,7 +386,12 @@ if ( ! class_exists( 'CF7Apps_Webhook' ) && class_exists( 'CF7Apps_App' ) ) :
                     return;
                 }
             } else {
-                // Form has no custom settings - use global settings
+                // Form has no custom settings - fall back to global settings
+                // only when global settings are enabled.
+                if ( ! $global_settings_enabled ) {
+                    return;
+                }
+
                 $global_settings = $this->get_option( null );
                 
                 if ( empty( $global_settings ) ) {

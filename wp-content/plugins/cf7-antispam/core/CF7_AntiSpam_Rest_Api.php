@@ -1,7 +1,4 @@
 <?php
-
-namespace CF7_AntiSpam\Core;
-
 /**
  * REST API related functions.
  *
@@ -10,6 +7,8 @@ namespace CF7_AntiSpam\Core;
  * @subpackage CF7_AntiSpam/includes
  * @author     Codekraft Studio <info@codekraft.it>
  */
+
+namespace CF7_AntiSpam\Core;
 
 use CF7_AntiSpam\Engine\CF7_AntiSpam_Activator;
 use CF7_AntiSpam\Engine\CF7_AntiSpam_Uninstaller;
@@ -106,25 +105,32 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 		return true;
 	}
 
+	/**
+	 * Download the GeoIP database.
+	 *
+	 * @since    0.6.5
+	 * @param    WP_REST_Request $request Full data about the request.
+	 * @return   WP_REST_Response
+	 */
 	public function cf7a_download_geoip_db( $request ) {
-		/** verify nonce */
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
 
 		$geoip = new CF7_AntiSpam_Geoip();
-		$res = $geoip->force_download();
+		$res   = $geoip->force_download();
 
 		if ( ! $res ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Error: unable to download GeoIP database', 'cf7-antispam' )
+					'message' => __( 'Error: unable to download GeoIP database', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -132,10 +138,9 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 		return rest_ensure_response(
 			array(
 				'success' => true,
-				'message' => __( 'GeoIP database downloaded successfully', 'cf7-antispam' )
+				'message' => __( 'GeoIP database downloaded successfully', 'cf7-antispam' ),
 			)
 		);
-
 	}
 
 	/**
@@ -150,7 +155,7 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 		$data = array(
 			'plugin_version' => CF7ANTISPAM_VERSION,
 			'status'         => $this->options['cf7a_enable'] ? 'enabled' : 'disabled',
-			'timestamp'      => current_time( 'timestamp' ),
+			'timestamp'      => date_i18n( 'Y-m-d H:i:s' ),
 		);
 
 		return rest_ensure_response( $data );
@@ -164,12 +169,12 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 	 * @return WP_Error|WP_REST_Response A response object or a WP_Error object. The response object contains the message.
 	 */
 	public function cf7a_resend_message( $request ) {
-		/** verify nonce */
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -182,19 +187,31 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 
 			if ( ! $r['success'] ) {
 				/* translators: %s is the mail id. */
-				return rest_ensure_response( array( 'success' => false, 'message' => sprintf( __( 'Error: unable to resend email with id %s.', 'cf7-antispam' ), $mail_id ) . ' ' . $r['message'], 'log' =>  $r['log'] ) );
+				return rest_ensure_response(
+					array(
+						'success' => false,
+						/* translators: %s is the mail id. */
+						'message' => sprintf( __( 'Error: unable to resend email with id %s.', 'cf7-antispam' ), $mail_id ) . ' ' . $r['message'],
+						'log'     => $r['log'],
+					)
+				);
 			}
 
 			if ( $r ) {
-				return rest_ensure_response( array( 'success' => true, 'message' => $r['message'] ) );
+				return rest_ensure_response(
+					array(
+						'success' => true,
+						'message' => $r['message'],
+					)
+				);
 			}
-		}
+		}//end if
 
-
-		return rest_ensure_response( array(
-			'success' => false,
-			/* translators: %s is the mail id. */
-			'message' => sprintf( __( 'Ops! something went wrong... unable to resend email with id %s', 'cf7-antispam' ), $mail_id )
+		return rest_ensure_response(
+			array(
+				'success' => false,
+				/* translators: %s is the mail id. */
+				'message' => sprintf( __( 'Ops! something went wrong... unable to resend email with id %s', 'cf7-antispam' ), $mail_id ),
 			)
 		);
 	}
@@ -207,64 +224,77 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 	 * @return WP_Error|WP_REST_Response A response object or a WP_Error object. The response object contains the message.
 	 */
 	public function cf7a_force_update( $request ) {
-		/** verify nonce */
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
 
-		/* Update the plugin database */
-		$updater = new CF7_AntiSpam_Updater( CF7ANTISPAM_VERSION, $this->options );
-		$res = $updater->may_do_updates();
+		// Hack the updater option version to force update
+		$this->options['cf7a_version'] = '0.0.0';
 
-		/* Update the plugin options */
+		// Update the plugin database
+		$updater = new CF7_AntiSpam_Updater( CF7ANTISPAM_VERSION, $this->options );
+		$res     = $updater->may_do_updates();
+
+		// Update the plugin options
 		CF7_AntiSpam_Activator::update_options();
 
-		// if update failed
+		// if the update fails
 		if ( ! $res ) {
-			return rest_ensure_response( array( 'success' => false, 'message' => __( 'Nothing to update', 'cf7-antispam' ) ) );
+			return rest_ensure_response(
+				array(
+					'success' => false,
+					'message' => __( 'Nothing to update', 'cf7-antispam' ),
+				)
+			);
 		}
 
-		return rest_ensure_response( array( 'success' => true, 'message' => __( 'Contact Form 7 Antispam Options and Database updated successfully!', 'cf7-antispam' ) ) );
+		return rest_ensure_response(
+			array(
+				'success' => true,
+				'message' => __( 'Contact Form 7 Antispam Options and Database updated successfully!', 'cf7-antispam' ),
+			)
+		);
 	}
 
 	/**
-	 * Reset the blacklist.
+	 * Reset the blocklist.
 	 *
 	 * @since    0.6.5
 	 * @param    WP_REST_Request $request Full data about the request.
 	 * @return   WP_REST_Response
 	 */
-	public function cf7a_reset_blacklist( $request ) {
-		/** verify nonce */
+	public function cf7a_reset_blocklist( $request ) {
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
 
 		/* uninstall class contains the database utility functions */
-		$r = CF7_AntiSpam_Uninstaller::cf7a_clean_blacklist();
+		$r = CF7_AntiSpam_Uninstaller::cf7a_clean_blocklist();
 
 		if ( $r ) {
 			return rest_ensure_response(
 				array(
 					'success' => true,
-					'message' => __( 'Success: ip blacklist cleaned', 'cf7-antispam' )
+					'message' => __( 'Success: ip blocklist cleaned', 'cf7-antispam' ),
 				)
 			);
 		} else {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Error: unable to clean blacklist. Please refresh and try again!', 'cf7-antispam' )
+					'message' => __( 'Error: unable to clean blocklist. Please refresh and try again!', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -278,12 +308,12 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 	 * @return   WP_REST_Response
 	 */
 	public function cf7a_reset_dictionary( $request ) {
-		/** verify nonce */
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -295,14 +325,14 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 			return rest_ensure_response(
 				array(
 					'success' => true,
-					'message' => __( 'b8 dictionary reset successful', 'cf7-antispam' )
+					'message' => __( 'b8 dictionary reset successful', 'cf7-antispam' ),
 				)
 			);
 		} else {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Something goes wrong while deleting b8 dictionary. Please refresh and try again!', 'cf7-antispam' )
+					'message' => __( 'Something goes wrong while deleting b8 dictionary. Please refresh and try again!', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -316,12 +346,12 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 	 * @return   WP_REST_Response
 	 */
 	public function cf7a_full_reset( $request ) {
-		/** verify nonce */
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -333,14 +363,14 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 			return rest_ensure_response(
 				array(
 					'success' => true,
-					'message' => __( 'CF7 AntiSpam fully reinitialized with success. You need to rebuild B8 manually if needed', 'cf7-antispam' )
+					'message' => __( 'CF7 AntiSpam fully reinitialized with success. You need to rebuild B8 manually if needed', 'cf7-antispam' ),
 				)
 			);
 		} else {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Ops! something went wrong... Please refresh and try again!', 'cf7-antispam' )
+					'message' => __( 'Ops! something went wrong... Please refresh and try again!', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -354,12 +384,12 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 	 * @return   WP_REST_Response
 	 */
 	public function cf7a_rebuild_dictionary( $request ) {
-		/** verify nonce */
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -370,14 +400,14 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 			return rest_ensure_response(
 				array(
 					'success' => true,
-					'message' => __( 'b8 dictionary rebuild successful', 'cf7-antispam' )
+					'message' => __( 'b8 dictionary rebuild successful', 'cf7-antispam' ),
 				)
 			);
 		} else {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Something goes wrong while rebuilding b8 dictionary. Please refresh and try again!', 'cf7-antispam' )
+					'message' => __( 'Something goes wrong while rebuilding b8 dictionary. Please refresh and try again!', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -392,12 +422,12 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 	 * @return   WP_REST_Response
 	 */
 	public function cf7a_unban_ip( $request ) {
-		/** verify nonce */
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -408,20 +438,20 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid ID', 'cf7-antispam' )
+					'message' => __( 'Invalid ID', 'cf7-antispam' ),
 				)
 			);
 		}
 
-		$blacklist = new CF7_Antispam_Blacklist();
-		$r = $blacklist->cf7a_unban_by_id( $unban_id );
+		$blocklist = new CF7_Antispam_Blocklist();
+		$r         = $blocklist->cf7a_unban_by_id( $unban_id );
 
 		if ( $r ) {
 			return rest_ensure_response(
 				array(
 					'success' => true,
 					/* translators: %s is the ip address. */
-					'message' => sprintf( __( 'Success: ip %s unbanned', 'cf7-antispam' ), $unban_id )
+					'message' => sprintf( __( 'Success: ip %s unbanned', 'cf7-antispam' ), $unban_id ),
 				)
 			);
 		} else {
@@ -429,7 +459,7 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 				array(
 					'success' => false,
 					/* translators: %s is the ip address. */
-					'message' => sprintf( __( 'Error: unable to unban %s', 'cf7-antispam' ), $unban_id )
+					'message' => sprintf( __( 'Error: unable to unban %s', 'cf7-antispam' ), $unban_id ),
 				)
 			);
 		}
@@ -443,12 +473,12 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 	 * @return   WP_REST_Response
 	 */
 	public function cf7a_ban_forever( $request ) {
-		/** verify nonce */
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
@@ -459,60 +489,62 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid ID', 'cf7-antispam' )
+					'message' => __( 'Invalid ID', 'cf7-antispam' ),
 				)
 			);
 		}
 
-		$blacklist = new CF7_Antispam_Blacklist();
-		$result = $blacklist->cf7a_ban_forever( $ban_id );
+		$blocklist = new CF7_Antispam_Blocklist();
+		$result    = $blocklist->cf7a_ban_forever( $ban_id );
 
 		return rest_ensure_response( $result );
 	}
 
 	/**
-	 * Export blacklist as CSV.
+	 * Export blocklist as CSV.
 	 *
 	 * @since    0.6.5
 	 * @param    WP_REST_Request $request Full data about the request.
 	 * @return   WP_REST_Response
 	 */
-	public function cf7a_export_blacklist( $request ) {
-		/** verify nonce */
+	public function cf7a_export_blocklist( $request ) {
+		/** Verify nonce */
 		if ( ! wp_verify_nonce( $request['nonce'], 'cf7a-nonce' ) ) {
 			return rest_ensure_response(
 				array(
 					'success' => false,
-					'message' => __( 'Invalid nonce', 'cf7-antispam' )
+					'message' => __( 'Invalid nonce', 'cf7-antispam' ),
 				)
 			);
 		}
 
-		$blacklist = new CF7_Antispam_Blacklist();
-		$export_data = $blacklist->cf7a_export_blacklist();
+		$blocklist   = new CF7_Antispam_Blocklist();
+		$export_data = $blocklist->cf7a_export_blocklist();
 
 		return rest_ensure_response(
 			array(
-				'success' => true,
-				'message' => __( 'Blacklist exported successfully', 'cf7-antispam' ),
+				'success'  => true,
+				'message'  => __( 'Blocklist exported successfully', 'cf7-antispam' ),
 				'filetype' => $export_data['filetype'],
 				'filename' => $export_data['filename'],
-				'data' => $export_data['data']
+				'data'     => $export_data['data'],
 			)
 		);
 	}
 
 	/**
-	 * Helper method to get blacklist data.
-	 * This should call the actual method that retrieves the blacklist from database.
+	 * Helper method to get blocklist data.
+	 * This should call the actual method that retrieves the blocklist from database.
 	 *
 	 * @since    0.6.5
 	 * @return   array
 	 */
-	private function cf7a_get_blacklist_data() {
-		$blacklist = new CF7_Antispam_Blacklist();
-		return $blacklist->cf7a_get_blacklist_data();
+	private function cf7a_get_blocklist_data() {
+		$blocklist = new CF7_Antispam_Blocklist();
+		return $blocklist->cf7a_get_blocklist_data();
 	}
+
+
 
 
 	/**
@@ -606,11 +638,11 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 
 		register_rest_route(
 			$this->namespace,
-			'reset-blacklist',
+			'reset-blocklist',
 			array(
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
-					'callback'            => array( $this, 'cf7a_reset_blacklist' ),
+					'callback'            => array( $this, 'cf7a_reset_blocklist' ),
 					'permission_callback' => array( $this, 'cf7a_get_permissions_check' ),
 					'args'                => array(
 						'nonce' => array(
@@ -746,11 +778,11 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 
 		register_rest_route(
 			$this->namespace,
-			'get-blacklist',
+			'get-blocklist',
 			array(
 				array(
 					'methods'             => WP_REST_Server::READABLE,
-					'callback'            => array( $this, 'cf7a_get_blacklist_data' ),
+					'callback'            => array( $this, 'cf7a_get_blocklist_data' ),
 					'permission_callback' => array( $this, 'cf7a_get_permissions_check' ),
 					'args'                => array(
 						'nonce' => array(
@@ -767,11 +799,11 @@ class CF7_AntiSpam_Rest_Api extends WP_REST_Controller {
 
 		register_rest_route(
 			$this->namespace,
-			'export-blacklist',
+			'export-blocklist',
 			array(
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
-					'callback'            => array( $this, 'cf7a_export_blacklist' ),
+					'callback'            => array( $this, 'cf7a_export_blocklist' ),
 					'permission_callback' => array( $this, 'cf7a_get_permissions_check' ),
 					'args'                => array(
 						'nonce' => array(

@@ -49,7 +49,7 @@ class ProductAnalytics {
 				directory: 'directory_summary',
 				'lazy-preload': 'lazy_summary',
 				cdn: 'cdn_summary',
-				webp: 'webp_summary',
+				'next-gen': 'webp_summary',
 			};
 			const locationId = ultraLink.classList.contains( 'wp-smush-ultra-compression-link' ) ? 'settings' : this.getCurrentPageSlug();
 			return locations[ locationId ] || 'bulksmush_settings';
@@ -88,10 +88,10 @@ class ProductAnalytics {
 					smush_bulksmush_library_gif_cdn: 'media_library',
 					smush_bulk_smush_complete_global: 'bulk_smush_complete',
 
-					// Local WebP.
-					summary_local_webp: 'dash_summary',
-					'smush-dashboard-local-webp-upsell': 'dash_widget',
-					// smush_webp_upgrade_button: 'webp_page',// Handled inside React WebP - free-content.jsx
+					// Local Next-Gen.
+					'summary_next-gen': 'dash_summary',
+					'smush-dashboard-next-gen-upsell': 'dash_widget',
+					'smush_next-gen_upgrade_button': 'Next-Gen Formats',// Moved from React WebP - free-content.jsx
 				};
 
 				if ( ! ( campaign in upsellLocations ) ) {
@@ -99,10 +99,10 @@ class ProductAnalytics {
 				}
 
 				const Location = upsellLocations[ campaign ];
-				const matches = campaign.match( /(cdn|webp)/i );
+				const matches = campaign.match( /(cdn|next-gen)/i );
 				const upsellModule = matches && matches[ 0 ];
 
-				const eventName = 'webp' === upsellModule ? 'local_webp_upsell' : 'cdn_upsell';
+				const eventName = 'next-gen' === upsellModule ? 'local_webp_upsell' : 'cdn_upsell';
 				tracker.track( eventName, { Location } );
 			} );
 		} );

@@ -37,7 +37,7 @@ class Bulk_Restore {
 	 *
 	 * @param array $attachment_ids Array of attachment IDs to restore.
 	 */
-	public function __construct( array $attachment_ids ) {
+	public function __construct( $attachment_ids ) {
 		$this->attachment_ids = array_filter( $attachment_ids, 'is_numeric' );
 	}
 

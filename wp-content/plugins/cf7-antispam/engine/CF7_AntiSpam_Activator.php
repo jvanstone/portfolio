@@ -1,7 +1,4 @@
 <?php
-
-namespace CF7_AntiSpam\Engine;
-
 /**
  * Fired during plugin activation.
  *
@@ -13,12 +10,15 @@ namespace CF7_AntiSpam\Engine;
  * @author     Codekraft Studio <info@codekraft.it>
  */
 
+namespace CF7_AntiSpam\Engine;
+
 use CF7_AntiSpam\Admin\CF7_AntiSpam_Admin_Tools;
 
 /**
  * It's a class that activates the plugin.
  */
 class CF7_AntiSpam_Activator {
+
 
 	/**
 	 * Creating a private static variable called $default_cf7a_options and assigning it an empty array.
@@ -77,7 +77,7 @@ class CF7_AntiSpam_Activator {
 			'mailbox_protection_multiple_send' => 0,
 			'bad_words_list'                   => array(),
 			'bad_ip_list'                      => array(),
-			'ip_whitelist'                     => array(),
+			'ip_allowlist'                     => array(),
 			'bad_email_strings_list'           => array(),
 			'bad_user_agent_list'              => array(),
 			'dnsbl_list'                       => array(),
@@ -92,7 +92,7 @@ class CF7_AntiSpam_Activator {
 				'_time'           => 0.3,
 				'_bad_string'     => 0.5,
 				'_dnsbl'          => 0.1,
-				'_honeypot'       => 0.3,
+				'_honeypot'       => 0.5,
 				'_detection'      => 0.7,
 				'_warn'           => 0.3,
 			),
@@ -116,12 +116,10 @@ class CF7_AntiSpam_Activator {
 				'PHP',
 			),
 			'dnsbl_list'             => array(
-				/* ipv4 dnsbl */
-				'dnsbl-2.uceprotect.net',
-				'dnsbl-3.uceprotect.net',
+				/** The ipv4 dnsbl. */
 				'zen.spamhaus.org',
 				'b.barracudacentral.org',
-				/* ipv6 dnsbl but due to the unlimited number of ipv6 dnsl will have a lower impact */
+				/** The ipv6 dnsbl. */
 				'bl.ipv6.spameatingmonkey.net',
 			),
 			'honeypot_input_names'   => array(
@@ -158,15 +156,14 @@ class CF7_AntiSpam_Activator {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$table_wordlist  = $wpdb->prefix . 'cf7a_wordlist';
-		$table_blacklist = $wpdb->prefix . 'cf7a_blacklist';
+		$table_wordlist = $wpdb->prefix . 'cf7a_wordlist';
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		/* Create the term database if not available */
+		// Create the term database if not available
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$has_wordlist_table = $wpdb->get_var(
-			$wpdb->prepare("SHOW TABLES like %s",$table_wordlist)
+			$wpdb->prepare( 'SHOW TABLES like %s', $table_wordlist )
 		);
 		if ( $has_wordlist_table !== $table_wordlist ) {
 			$cf7a_wordlist = 'CREATE TABLE IF NOT EXISTS `' . $table_wordlist . "` (
@@ -177,9 +174,9 @@ class CF7_AntiSpam_Activator {
 			) $charset_collate;";
 			dbDelta( $cf7a_wordlist );
 
-			/* Insert the default values */
+			// Insert the default values
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-			$wpdb->query( $wpdb->prepare(  "INSERT INTO %i (`token`, `count_ham`) VALUES ('b8*dbversion', '3');", $table_wordlist ) );
+			$wpdb->query( $wpdb->prepare( "INSERT INTO %i (`token`, `count_ham`) VALUES ('b8*dbversion', '3');", $table_wordlist ) );
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 			$wpdb->query( $wpdb->prepare( "INSERT INTO %i (`token`, `count_ham`, `count_spam`) VALUES ('b8*texts', '0', '0');", $table_wordlist ) );
@@ -187,12 +184,13 @@ class CF7_AntiSpam_Activator {
 			cf7a_log( "{$table_wordlist} table creation succeeded", 2 );
 		}
 
-		/* Create the blacklist database */
+		// Create the blocklist database
+		$table_blocklist = $wpdb->prefix . 'cf7a_blocklist';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$has_blacklist_table = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES like %s" , $table_blacklist) );
-		if ( $has_blacklist_table !== $table_blacklist ) {
+		$has_blocklist_table = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES like %s', $table_blocklist ) );
+		if ( $has_blocklist_table !== $table_blocklist ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange
-			$cf7a_database = "CREATE TABLE IF NOT EXISTS $table_blacklist (
+			$cf7a_database = "CREATE TABLE IF NOT EXISTS $table_blocklist (
 				 `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
 				 `ip` varchar(45) NOT NULL,
 				 `status` int(10) unsigned DEFAULT NULL,
@@ -206,11 +204,11 @@ class CF7_AntiSpam_Activator {
 			$result = dbDelta( $cf7a_database );
 
 			if ( $result ) {
-				cf7a_log( "{$table_blacklist} table creation/update succeeded", 2 );
+				cf7a_log( "{$table_blocklist} table creation/update succeeded", 2 );
 			} else {
-				cf7a_log( "{$table_blacklist} table creation/update failed", 1 );
+				cf7a_log( "{$table_blocklist} table creation/update failed", 1 );
 			}
-		}
+		}//end if
 	}
 
 	/**
@@ -221,10 +219,10 @@ class CF7_AntiSpam_Activator {
 	private static function store_update_data( $options ) {
 		/* update the plugin update time field */
 		$options['last_update_data'] = array(
-			'time' => time(),
+			'time'        => time(),
 			'old_version' => $options['cf7a_version'] ?? 'unknown',
 			'new_version' => CF7ANTISPAM_VERSION,
-			'errors' => array(),
+			'errors'      => array(),
 		);
 		return $options;
 	}
@@ -242,7 +240,7 @@ class CF7_AntiSpam_Activator {
 		if ( false === $options || $reset_options ) {
 
 			// Delete all options
-			if ( $reset_options === true ) {
+			if ( true === $reset_options ) {
 				delete_option( 'cf7a_options' );
 			}
 
@@ -268,9 +266,9 @@ class CF7_AntiSpam_Activator {
 			cf7a_log( 'CF7-antispam plugin options updated', 1 );
 
 			update_option( 'cf7a_options', $new_options );
-		}
+		}//end if
 
-		cf7a_log( $new_options, 1 );
+		cf7a_log( $new_options, 2 );
 
 		CF7_AntiSpam_Admin_Tools::cf7a_push_notice(
 			esc_html__( 'CF7 AntiSpam updated successful! Please flush cache to refresh hidden form data', 'cf7-antispam' ),
