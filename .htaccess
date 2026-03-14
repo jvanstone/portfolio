@@ -1,11 +1,13 @@
 # BEGIN LSCACHE
 ## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
-<IfModule LiteSpeed>
+<IfModule mod_rewrite.c>
 RewriteEngine on
-CacheLookup on
-RewriteRule .* - [E=Cache-Control:no-autoflush]
 RewriteRule litespeed/debug/.*\.log$ - [F,L]
 RewriteRule \.litespeed_conf\.dat - [F,L]
+</IfModule>
+<IfModule LiteSpeed>
+CacheLookup on
+RewriteRule .* - [E=Cache-Control:no-autoflush]
 
 ### marker ASYNC start ###
 RewriteCond %{REQUEST_URI} /wp-admin/admin-ajax\.php

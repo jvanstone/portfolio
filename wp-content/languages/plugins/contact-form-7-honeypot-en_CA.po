@@ -1,0 +1,54 @@
+# Translation of Plugins - CF7 Apps – [Honeypot and hCAPTCHA for Contact Form 7] - Stable (latest release) in English (Canada)
+# This file is distributed under the same license as the Plugins - CF7 Apps – [Honeypot and hCAPTCHA for Contact Form 7] - Stable (latest release) package.
+msgid ""
+msgstr ""
+"PO-Revision-Date: 2019-10-23 23:06:40+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: GlotPress/4.0.3\n"
+"Language: en_CA\n"
+"Project-Id-Version: Plugins - CF7 Apps – [Honeypot and hCAPTCHA for Contact Form 7] - Stable (latest release)\n"
+
+#: legacy-honeypot/includes/honeypot4cf7-admin.php:179
+#: legacy-honeypot/includes/honeypot4cf7-admin.php:204
+msgid "Honeypot for Contact Form 7"
+msgstr "Honeypot for Contact Form 7"
+
+#: includes/apps/honeypot/honeypot.php:80
+#: legacy-honeypot/includes/honeypot4cf7-admin.php:371
+msgid "If checked, the accessibility label will not be generated. This is not recommended, but may improve spam blocking. If you're unsure, leave this unchecked."
+msgstr "If checked, the accessibility label will not be generated. This is not recommended, but may improve spam blocking. If you're unsure, leave this unchecked."
+
+#: includes/apps/acf-integration/includes/class-cf7-acf-integration.php:230
+#: legacy-honeypot/includes/honeypot4cf7.php:384
+msgid "Insert Tag"
+msgstr "Insert Tag"
+
+#: legacy-honeypot/includes/honeypot4cf7.php:287
+msgid "Name"
+msgstr "Name"
+
+#: legacy-honeypot/includes/honeypot4cf7.php:264
+msgid "Generate a form-tag for a spam-stopping honeypot field. For more details, see %s."
+msgstr "Generate a form-tag for a spam-stopping honeypot field. For more details, see %s."
+
+#: includes/apps/honeypot/honeypot.php:13
+#: legacy-honeypot/includes/class-honeypot4cf7-data-table.php:16
+#: legacy-honeypot/includes/honeypot4cf7-admin.php:180
+#: legacy-honeypot/includes/honeypot4cf7.php:258
+#: legacy-honeypot/includes/honeypot4cf7.php:429
+#: src/templates/honeypot/HoneypotForms.js:33
+msgid "Honeypot"
+msgstr "Honeypot"
+
+#: legacy-honeypot/includes/honeypot4cf7-admin.php:338
+#: legacy-honeypot/includes/honeypot4cf7.php:62
+msgid "Please leave this field empty."
+msgstr "Please leave this field empty."
+
+#. translators: %s: Link to Contact Form 7 plugin page.
+#: legacy-honeypot/includes/honeypot4cf7-admin.php:48
+msgid "%s must be installed and activated for the CF7 Honeypot plugin to work"
+msgstr "%s must be installed and activated for the CF7 Honeypot plugin to work"
