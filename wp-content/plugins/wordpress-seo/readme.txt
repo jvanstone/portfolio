@@ -4,8 +4,8 @@ Donate link: https://yoa.st/1up
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
 Tags: SEO, XML sitemap, Content analysis, Readability, Schema
-Tested up to: 6.9
-Stable tag: 27.1.1
+Tested up to: 7.0
+Stable tag: 27.9
 Requires PHP: 7.4
 
 Improve your SEO with real-time feedback, schema, and clear guidance. Upgrade for AI tools, Google Docs integration, and 24/7 support, no hidden fees.
@@ -303,56 +303,52 @@ Your question has most likely been answered on our help center: [yoast.com/help/
 
 == Changelog ==
 
-= 27.1.1 =
+= 27.9 =
 
-Release date: 2026-03-03
+Release date: 2026-06-22
 
-#### Bugfixes
-
-* Fixes a bug where Schema aggregator endpoints were returning a fatal error when trying to access response pages other than the first one by using slash syntax.
-
-= 27.1 =
-
-Release date: 2026-03-03
-
-New: Introducing the Schema Aggregation feature. Futureproof your website for an agentic future. [Read the full release post here](https://yoa.st/55i).
+Yoast SEO 27.9 brings more enhancements and bugfixes. [Find more information about our software releases and updates here](https://yoa.st/releases).
 
 #### Enhancements
 
-* Introduces the Schema aggregation feature. Thanks to Syde for helping us with testing it!
-* Introduces a more robust HTML processing and highlighting approach for the *transition words* assessment.
+* Improves the performance of the content analysis by reusing previously built HTML trees across assessor runs, related-keyphrase passes and research calls instead of rebuilding the tree for each.
+* Passes shortcodes to the Insights analysis data for more consistent analysis result across application.
 
 #### Bugfixes
 
-* Fixes a bug where sentences containing transition words failed to be highlighted in _transition words_ assessment when they contained elements excluded from the analysis such as `<code>`.
-* Fixes a bug where Slovak two-part transition words weren't recognized when running the readability analysis.
-
-= 27.0 =
-
-Release date: 2026-02-17
-
-Yoast SEO 27.0 brings more enhancements and bugfixes. [Find more information about our software releases and updates here](https://yoa.st/releases).
-
-#### Enhancements
-
-* Introduces an `images` array attribute to FAQ and How-to blocks to allow for explicit image handling.
-* Integrates `html-react-parser` to improve HTML string handling within React components.
-* Migrates FAQ block question and answer fields from arrays to HTML strings to improve compatibility with WordPress components.
-* Migrates How-to block step name and text fields from arrays to HTML strings to improve compatibility with WordPress components.
-* Refines the design of the search appearance mode switcher.
-
-#### Bugfixes
-
-* Fixes a bug where the inline link icon was missing when editing a synced pattern in the Block Editor on WordPress 6.9.
-* Fixes a bug where the AI Optimize buttons remained active even when another button had been pressed.
-* Fixes a bug where the subheading distribution assessment threw an error when the content contained text without subheadings followed by a block that included a subheading (such as a Table of Contents block).
+* Fixes a bug where the recently modified posts were fetched twice when using the Content Planner.
 
 #### Other
 
-* Updates the design of the `Generate 5 more` button and the preview background within the AI generator.
-* Modernizes plugin translation handling by removing obsolete `load_plugin_textdomain()` calls.
-* Restores the visibility of the suggestions title and the `Generate 5 more` button while suggestions are in the loading state.
-* Renames the Yoast SEO AI+ card on the plans page for better clarity.
+* Adds the web-server family to the server data collected for opt-in tracking.
+
+= 27.8 =
+
+Release date: 2026-06-09
+
+Yoast SEO 27.8 brings more enhancements and bugfixes. [Find more information about our software releases and updates here](https://yoa.st/releases).
+
+#### Enhancements
+
+* Makes the schema aggregator faster by reducing database roundtrips when indexables are disabled.
+* Speeds up the SEO optimization analysis by cutting down the number of database queries it runs.
+* Optimizes resource-heavy database queries when performing actions on admin pages related to SEO optimization.
+* Reduces loading times of the root sitemap on sites with many users.
+* Reduces loading times of the author sitemap on sites with many users.
+* Prevents unnecessary database queries when someone visits an admin page.
+
+#### Bugfixes
+
+* Ensures compatibility with the React 19 version bundled in Gutenberg 23.3 (WordPress 7.1), fixing several screens and components that could otherwise fail to render.
+* Fixes a bug where NaN became the Primary taxonomy and triggered a console error.
+* Fixes a bug where the dismiss button in the Webinar promo notice on the General page was transparent.
+* Improves post editor rendering performance by stabilizing Redux selector and `withSelect` references in multiple components to prevent unnecessary re-renders.
+
+#### Other
+
+* Introduces the `wpseo_custom_fields_pre_query` filter, letting sites skip the resource-heavy custom-fields lookup in Yoast settings by supplying a pre-computed list or a custom query.
+* Removes the Yoast group from the filter bar on the WordPress plugins list.
+* Sets the title of a child task to "(no title)" in the task list when the related post has no title.
 
 = Earlier versions =
 For the changelog of earlier versions, please refer to [the changelog on yoast.com](https://yoa.st/yoast-seo-changelog).
