@@ -3,7 +3,7 @@
         'name' => 'jasonvanstone/portfolio',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'a50cf0d981f79a9609dd2a5b039e4bb08f99250b',
+        'reference' => '1394ad26e9f152f2c55e88ec41db22da9f37453a',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'jasonvanstone/portfolio' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'a50cf0d981f79a9609dd2a5b039e4bb08f99250b',
+            'reference' => '1394ad26e9f152f2c55e88ec41db22da9f37453a',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
