@@ -1,60 +1,99 @@
-import { useEffect, useState } from '@wordpress/element';
+import { useEffect, useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Button } from '@wordpress/components';
+import { CalendarMonthOutlined } from '@mui/icons-material';
+import { toast } from 'react-toastify';
 import CF7AppsSkeletonLoader from '../../components/CF7AppsSkeletonLoader';
 import CF7AppsPopup from '../../components/CF7AppsPopup';
-import { deleteCF7Entries, getCF7Entries, getAllCF7Forms } from '../../api/api';
 import CF7AppsSelectField from '../../components/CF7AppsSelectField';
-import CF7AppsTextField from "../../components/CF7AppsTextField";
+import CF7AppsTextField from '../../components/CF7AppsTextField';
 import CF7AppsCalendar from '../../components/CF7AppsCalendar';
-import { toast } from 'react-toastify';
-import { DeleteOutlined, VisibilityOutlined, CalendarMonthOutlined } from '@mui/icons-material';
+import {
+    deleteCF7Entries,
+    exportCF7Entries,
+    getAllCF7Forms,
+    getCF7Entries,
+} from '../../api/api';
+import { getTemplate } from '../../templates/CF7AppsTemplates';
 
 /**
  * CF7Entries Component
  *
  * @since 3.1.0
  */
-const Cf7Entries = () => {
 
-    const [ cf7entries, setCf7entries ]     = useState( false );
-    const [ loading, setLoading ]           = useState( false );
-    const [ showDetails, setShowDetails ]   = useState( false );
-    const [ entryData, setEntryData ]       = useState( false );
+
+
+const Cf7EntriesCore = ( { view = 'combined' } ) => {
+    const [ cf7entries, setCf7entries ] = useState( false );
+    const [ loading, setLoading ] = useState( false );
+    const [ showDetails, setShowDetails ] = useState( false );
+    const [ entryData, setEntryData ] = useState( false );
     const [ totalEntries, setTotalEntries ] = useState( 0 );
-    const [ currentPage, setCurrentPage ]   = useState( 1 );
-    const [ searchParam, setSearchParam ]   = useState( { form_id: 0, search: '' } );
+    const [ currentPage, setCurrentPage ] = useState( 1 );
+    const [ searchParam, setSearchParam ] = useState( { form_id: 0, search: '' } );
+    const [ bulkAction, setBulkAction ] = useState( 'null' );
     const [ forms, setForms ] = useState( {} );
     const [ selectedDate, setSelectedDate ] = useState( '' );
+    const [ isExporting, setIsExporting ] = useState( false );
     const [ dateRange, setDateRange ] = useState( {
         startDate: new Date(),
         endDate: new Date(),
         key: 'selection',
     } );
 
-    const fetchEntries = async ( isInitial = false ) => {
+    const availableForms = useMemo(
+        () => Object.entries( forms ).filter( ( [ key ] ) => key !== '0' ),
+        [ forms ]
+    );
 
+    const formSelectOptions = useMemo( () => {
+        const options = { all: __( 'All Forms', 'cf7apps' ) };
+        availableForms.forEach( ( [ value, label ] ) => {
+            options[ value ] = label;
+        } );
+        return options;
+    }, [ availableForms ] );
+
+    const fetchEntries = async ( isInitial = false, params = {} ) => {
         if ( isInitial ) {
-            setLoading(true);
+            setLoading( true );
         }
 
-        const entries  = await getCF7Entries();
-        const cf7forms = await getAllCF7Forms();
+        const entries = await getCF7Entries( {
+            page: params.page || currentPage,
+            perPage: 10,
+            search: params.search ?? searchParam.search,
+            form_id: params.form_id ?? searchParam.form_id,
+            start_date: params.start_date ?? searchParam.start_date,
+            end_date: params.end_date ?? searchParam.end_date,
+        } );
 
-        setCf7entries( entries.entries );
-        setTotalEntries( entries.total );
-        setCurrentPage( 1 );
-        setForms( cf7forms );
+        if ( entries ) {
+            setCf7entries( entries.entries );
+            setTotalEntries( entries.total );
+        }
 
         if ( isInitial ) {
             setLoading( false );
         }
-    }
+    };
 
-    useEffect(() => {
-        
+    const fetchFormsList = async () => {
+        const cf7forms = await getAllCF7Forms();
 
-        fetchEntries( true );
+        if ( cf7forms ) {
+            setForms( cf7forms );
+        }
+    };
+
+    useEffect( () => {
+        if ( view !== 'settings' ) {
+            fetchEntries( true );
+        }
+
+        fetchFormsList();
+
         const urlParams = new URLSearchParams(window.location.search);
 
         if ( urlParams.get('page') === 'cf7apps' && urlParams.get('tab') && urlParams.get('tab').startsWith('entries') ) {
@@ -66,7 +105,28 @@ const Cf7Entries = () => {
                 entriesMenu.parentElement.classList.add('current');
             }
         }
-    }, []);
+    }, [ view ] );
+
+    const handleExportCsv = async ( entryIds = [] ) => {
+        const ids = Array.isArray( entryIds )
+            ? entryIds
+            : [];
+        setIsExporting( true );
+        const exported = await exportCF7Entries( {
+            entryIds: ids,
+            form_id: searchParam.form_id || 0,
+            search: searchParam.search || '',
+            start_date: searchParam.start_date || '',
+            end_date: searchParam.end_date || '',
+        } );
+        setIsExporting( false );
+
+        if ( exported ) {
+            toast.success( __( 'Export ready.', 'cf7apps' ) );
+        } else {
+            toast.error( __( 'Export failed.', 'cf7apps' ) );
+        }
+    };
 
     let handleViewButton = ( e, data ) => {
         e.preventDefault();
@@ -101,7 +161,7 @@ const Cf7Entries = () => {
     }
 
     let checkAllEntries = ( e ) => {
-        const checkboxes = document.querySelectorAll( 'input[type="checkbox"]' );
+        const checkboxes = document.querySelectorAll( '.cf7apps-entry-checkbox' );
         checkboxes.forEach( checkbox => {
             checkbox.checked = e.target.checked;
         } );
@@ -110,6 +170,13 @@ const Cf7Entries = () => {
     let handleBulkAction = ( action, entries ) => {
         if ( 'null' === action ) {
             toast.error( __( 'Please select an action', 'cf7apps' ) );
+            return;
+        }
+
+        if ( 'export_csv' === action ) {
+            handleExportCsv(
+                entries.map( ( id ) => parseInt( id, 10 ) ).filter( ( id ) => id > 0 )
+            );
             return;
         }
 
@@ -143,30 +210,37 @@ const Cf7Entries = () => {
     }
 
     let handleSearchFrom = ( type, value ) => {
+        const nextSearchParam = { ...searchParam };
+
         if ( 'form' === type ) {
-            searchParam['form_id'] = value;
-            setSearchParam( searchParam )
+            nextSearchParam.form_id = value;
         }
 
         if ( 'text' === type ) {
-            searchParam['search'] = value;
-            setSearchParam( searchParam );
+            nextSearchParam.search = value;
         }
 
         if ( 'daterange' === type ) {
             setDateRange( value );
-            searchParam['start_date'] = value.startDate.toISOString().split('T')[0];
-            searchParam['end_date']   = value.endDate.toISOString().split('T')[0];
-            setSearchParam( searchParam );
+            nextSearchParam.start_date = value.startDate.toISOString().split('T')[0];
+            nextSearchParam.end_date   = value.endDate.toISOString().split('T')[0];
         }
 
-        var entryParams = { page: currentPage, perPage: 10, search: searchParam.search, form_id: searchParam.form_id, start_date: searchParam.start_date, end_date: searchParam.end_date };
+        setSearchParam( nextSearchParam );
 
-        getCF7Entries( entryParams )
-            .then( ( entries ) => {
-                setCf7entries( entries.entries );
-                setTotalEntries( entries.total );
-            } );
+        const entryParams = {
+            page: currentPage,
+            perPage: 10,
+            search: nextSearchParam.search,
+            form_id: nextSearchParam.form_id,
+            start_date: nextSearchParam.start_date,
+            end_date: nextSearchParam.end_date,
+        };
+
+        getCF7Entries( entryParams ).then( ( entries ) => {
+            setCf7entries( entries.entries );
+            setTotalEntries( entries.total );
+        } );
     };
 
     let handleDateRangeSelect = ( e ) => {
@@ -275,8 +349,26 @@ const Cf7Entries = () => {
     return (
         ! loading ?
                 <div className={ 'cf7apps-template-cf7-entries' }>
+                    { view !== 'table' && ( () => {
+                        const EntriesProPanel = getTemplate( 'cf7EntriesProPanel' );
+                        if ( ! EntriesProPanel ) {
+                            return null;
+                        }
+                        const formSelectOptions = { all: __( 'All Forms', 'cf7apps' ) };
+                        Object.entries( forms ).filter( ( [ key ] ) => key !== '0' ).forEach( ( [ value, label ] ) => {
+                            formSelectOptions[ value ] = label;
+                        } );
+                        return (
+                            <EntriesProPanel
+                                formSelectOptions={ formSelectOptions }
+                                searchParam={ searchParam }
+                            />
+                        );
+                    } )() }
+
 
                     {
+                        view !== 'settings' &&
                         showDetails && entryData && (
                             <CF7AppsPopup title={ __( 'Email Details', 'cf7apps' ) } onClose={ () => setShowDetails( false ) }>
                                 <p className={ 'cf7apps-entry-date' }>
@@ -317,21 +409,28 @@ const Cf7Entries = () => {
                         )
                     }
 
-                    <div className={ 'cf7apps-table-nav cf7apps-nav-header' }>
+                    { view !== 'settings' && (
+                    <>
+                    <div className={ 'cf7apps-entries-toolbar cf7apps-table-nav cf7apps-nav-header' }>
 
-                        <div className={ 'cf7apps-bulk-action cf7apps-left' }>
+                        <div className={ 'cf7apps-entries-toolbar__left cf7apps-bulk-action cf7apps-left' }>
 
+                            <div className="cf7apps-entries-toolbar__field">
                             <CF7AppsSelectField
-                                className={ 'cf7apps-bulk-action-select-field' }
-                                selected={ 'null' }
+                                className={ 'cf7apps-bulk-action-select-field inline-select' }
+                                variant="app"
+                                selected={ bulkAction }
+                                onChange={ ( e ) => setBulkAction( e.target.value ) }
                                 options={ {
                                     'null'   : __( 'Bulk Actions' ),
+                                    'export_csv' : __( 'Export CSV', 'cf7apps' ),
                                     'delete' : __( 'Delete', 'cf7apps' ),
                                 } }
                             />
+                            </div>
 
                             <Button
-                                className={ 'cf7apps-btn tertiary-primary cf7apps-bulk-action-field' }
+                                className={ 'cf7apps-btn tertiary-primary cf7apps-bulk-action-field cf7apps-entries-toolbar__apply' }
                                 onClick={ () => {
                                     const selectedEntries = document.querySelectorAll( '.cf7apps-entry-checkbox:checked' );
                                     if ( selectedEntries.length === 0 ) {
@@ -344,40 +443,58 @@ const Cf7Entries = () => {
                                         entries.push( entry.value );
                                     } );
 
-                                    const action = document.querySelector( '.cf7apps-bulk-action-select-field' ).value;
+                                    const action = bulkAction;
                                     handleBulkAction( action, entries );
+                                    setBulkAction( 'null' );
                                 } }
                             >{ __( 'Apply', 'cf7apps' ) }</Button>
 
                         </div>
 
-                        <div className={ 'cf7apps-right cf7apps-filter' }>
+                        <div className={ 'cf7apps-entries-toolbar__right cf7apps-right cf7apps-filter' }>
+                            <div className="cf7apps-entries-toolbar__field">
                             <CF7AppsSelectField
-                                className={ 'cf7apps-filter-select-field' }
+                                className={ 'cf7apps-filter-select-field inline-select' }
+                                variant="app"
                                 selected={ searchParam.form_id }
                                 options={ forms }
                                 onChange={ e => handleSearchFrom( 'form', e.target.value ) }
                             />
+                            </div>
 
+                            <div className="cf7apps-entries-toolbar__field">
                             <CF7AppsTextField
                                 className={ 'cf7apps-filter-text-field' }
                                 placeholder={ __( 'Search', 'cf7apps' ) }
+                                variant="app"
                                 onChange={ ( e ) => handleSearchFrom( 'text', e.target.value ) }
                             />
+                            </div>
 
+                            <div className="cf7apps-entries-toolbar__field cf7apps-entries-toolbar__field--calendar">
                             <CF7AppsCalendar
                                 selectedDate={ selectedDate }
                                 selection={ [ dateRange ] }
                                 onSelect={ handleDateRangeSelect }
                                 placeHolder={ __( 'Select Date Range', 'cf7apps' ) }
                             />
+                            </div>
 
                             <Button
-                                style={ { marginLeft: '10px' } }
+                                className={ 'cf7apps-btn tertiary-primary cf7apps-entries-toolbar__export' }
+                                onClick={ () => handleExportCsv() }
+                                disabled={ isExporting }
+                            >
+                                { isExporting
+                                    ? __( 'Exporting...', 'cf7apps' )
+                                    : __( 'Export CSV', 'cf7apps' ) }
+                            </Button>
+
+                            <Button
                                 onClick={ () => {
                                     setSearchParam( { form_id: 0, search: '' } );
+                                    setBulkAction( 'null' );
                                     setSelectedDate( '' );
-                                    document.querySelector( '.cf7apps-filter-select-field' ).value = 0;
                                     document.querySelector( '.cf7apps-filter-text-field' ).value = '';
                                     setDateRange( {
                                         startDate: new Date(),
@@ -390,7 +507,7 @@ const Cf7Entries = () => {
                                             setTotalEntries( entries.total );
                                         } );
                                 } }
-                                className={ 'cf7apps-btn tertiary-secondary' }
+                                className={ 'cf7apps-btn tertiary-secondary cf7apps-entries-toolbar__clear' }
                             >{ __( 'Clear Filter', 'cf7apps' ) }</Button>
 
 
@@ -398,7 +515,7 @@ const Cf7Entries = () => {
 
                     </div>
 
-                    <table width="100%">
+                    <table className="cf7apps-entries-table" width="100%">
                         <thead>
                         <tr>
                             <th>
@@ -428,18 +545,22 @@ const Cf7Entries = () => {
                                                 <td>{ entry.email }</td>
                                                 <td>{ entry.date_time }</td>
                                                 <td>
-                                                    <span style={ { marginRight: '10px' } }>
-                                                        <a onClick={ e => handleViewButton( e, entry ) } href={ '#' }>
-                                                            <VisibilityOutlined fontSize={ '20px' } style={ { marginBottom: '-2px', marginRight: '5px', } } />
+                                                    <div className="cf7apps-entries-row-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="cf7apps-entries-row-action cf7apps-entries-row-action--view"
+                                                            onClick={ e => handleViewButton( e, entry ) }
+                                                        >
                                                             { __( 'View', 'cf7apps' ) }
-                                                        </a>
-                                                    </span>
-                                                    <span style={ { marginRight: '10px' } }>
-                                                        <a onClick={ e => handleDeleteButton( e, entry.id ) } href={ '#' }>
-                                                            <DeleteOutlined fontSize={ '20px' } style={ { marginBottom: '-2px', marginRight: '5px', } } />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="cf7apps-entries-row-action cf7apps-entries-row-action--delete"
+                                                            onClick={ e => handleDeleteButton( e, entry.id ) }
+                                                        >
                                                             { __( 'Delete', 'cf7apps' ) }
-                                                        </a>
-                                                    </span>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -447,7 +568,7 @@ const Cf7Entries = () => {
                                 </>
                             ) : (
                                 <tr>
-                                    <td colSpan={ '4' }>{ __( 'No records found.', 'cf7apps' ) }</td>
+                                    <td colSpan={ 5 }>{ __( 'No records found.', 'cf7apps' ) }</td>
                                 </tr>
                             )
                         }
@@ -458,7 +579,7 @@ const Cf7Entries = () => {
 
                         <div className="cf7apps-left">
                             <p className="cf7apps-datatable-count">
-                                { __( 'Showing', 'cf7apps' ) } <b>{ cf7entries ? cf7entries.length : 0 }</b> of <b>{ totalEntries }</b> { __( 'entries', 'cf7apps' ) } | { __( 'Page', 'cf7apps' ) } <b>{ currentPage }</b>
+                                { __( 'Showing', 'cf7apps' ) } <b>{ cf7entries ? cf7entries.length : 0 }</b> { __( 'of', 'cf7apps' ) } <b>{ totalEntries }</b> { __( 'entries', 'cf7apps' ) }
                             </p>
                         </div>
                         <div className="cf7apps-right">
@@ -468,6 +589,8 @@ const Cf7Entries = () => {
                         </div>
 
                     </div>
+                    </>
+                    ) }
                 </div>
             :
             <>
@@ -476,5 +599,14 @@ const Cf7Entries = () => {
             </>
     );
 }
+
+const Cf7Entries = ( props ) => {
+    if ( props?.tabKey === 'payment_logs' ) {
+        const PaymentLogs = getTemplate( 'cf7PaymentLogs' );
+        return PaymentLogs ? <PaymentLogs { ...props } /> : null;
+    }
+
+    return <Cf7EntriesCore { ...props } />;
+};
 
 export default Cf7Entries;

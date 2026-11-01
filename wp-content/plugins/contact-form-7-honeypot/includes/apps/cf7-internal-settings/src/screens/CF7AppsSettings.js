@@ -1,80 +1,400 @@
 import CF7AppsNotice from '../../../../../src/components/CF7AppsNotice';
+import CF7AppsFormNotice from '../components/CF7AppsFormNotice';
 import CF7AppsSkeletonLoader from '../components/CF7AppsSkeletonLoader';
 import CF7AppsDisabledOverlay from '../components/CF7AppsDisabledOverlay';
 import { useParams } from 'react-router';
-import { useState, useEffect, useCallback } from '@wordpress/element';
+import { useState, useEffect } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { getApps, saveSettings } from '../api'
 import CF7AppsTextField from '../../../../../src/components/CF7AppsTextField';
 import CF7AppsHelpText from '../../../../../src/components/CF7AppsHelpText';
 import CF7AppsNumberField from '../../../../../src/components/CF7AppsNumberField';
-import CF7AppsToggle from '../../../../../src/components/CF7AppsToggle';
+import CF7AppsFormToggle from '../components/CF7AppsFormToggle';
 import CF7AppsSelectField from '../../../../../src/components/CF7AppsSelectField';
 import { Button } from '@wordpress/components';
 import CF7AppsRadioField from '../../../../../src/components/CF7AppsRadioField';
 import parse from 'html-react-parser';
-import {toast} from "react-toastify";
+import { toast } from "react-toastify";
 import { useLocation } from 'react-router';
 import { getWebhookDataTypeOptions } from '../../../../../src/utils/webhookUiUtils';
+import { getFormEditorSettingsPanelStyle, normalizeParentMenu } from '../../../../../src/utils/appCardTheme';
+import CF7AppsAppSettingsHeader from '../../../../../src/components/CF7AppsAppSettingsHeader';
+import CF7AppsAppSettingsTabs from '../../../../../src/components/CF7AppsAppSettingsTabs';
+import CF7AppsTemplates, { getTemplate, hasTemplate } from '../../../../../src/templates/CF7AppsTemplates';
+import { validateWebhookUrls } from '../../../../../src/utils/webhookValidation';
 
-const TextareaField = ({ fieldKey, field, className, description, disabled, openMap, setOpenMap, formData, handleInputChange, isWebhookDisabled }) => {
-    const open = (openMap && openMap[ fieldKey ] !== undefined) ? openMap[ fieldKey ] : ! field.collapsible;
-    console.log(isWebhookDisabled);
+const PAYMENT_FORM_APPS = [ 'stripe', 'paypal', 'square' ];
+
+/** Pro registers this via CF7AppsTemplateRegistry as PaymentFormSettingsFields. */
+const getPaymentFormSettingsFields = () =>
+	getTemplate( 'PaymentFormSettingsFields' ) ||
+	( typeof window !== 'undefined' ? window.CF7AppsPaymentFormSettingsFields : null );
+const REDIRECT_URL_APPS = [ 'stripe', 'paypal' ];
+
+const validateRedirectUrls = ( app, formData ) => {
+    if (
+        ! REDIRECT_URL_APPS.includes( app ) ||
+        ! isPaymentFormEnabled( formData.is_enabled )
+    ) {
+        return null;
+    }
+
+    const missing = [];
+    const successUrl = formData.success_url
+        ? String( formData.success_url ).trim()
+        : '';
+    const failureUrl = formData.failure_url
+        ? String( formData.failure_url ).trim()
+        : '';
+
+    if ( successUrl === '' ) {
+        missing.push( 'success_url' );
+    }
+    if ( failureUrl === '' ) {
+        missing.push( 'failure_url' );
+    }
+
+    if ( missing.length === 0 ) {
+        return null;
+    }
+
+    let message = __( 'Success URL and Failure URL are required.', 'cf7apps' );
+    if ( missing.length === 1 ) {
+        message = missing[ 0 ] === 'success_url'
+            ? __( 'Success URL is required.', 'cf7apps' )
+            : __( 'Failure URL is required.', 'cf7apps' );
+    }
+
+    return { missing, message };
+};
+
+const resolveGlobalPaymentCurrency = ( appSettings, appId ) => {
+    const fromPayload = appSettings?.payment_global?.default_currency;
+    if ( fromPayload && String( fromPayload ).trim() !== '' ) {
+        return String( fromPayload ).trim();
+    }
+
+    const currencyField = appSettings?.admin_settings?.general?.fields?.currency;
+    if ( currencyField?.selected && String( currencyField.selected ).trim() !== '' ) {
+        return String( currencyField.selected ).trim();
+    }
+    if ( currencyField?.default && String( currencyField.default ).trim() !== '' ) {
+        return String( currencyField.default ).trim();
+    }
+
+    const localized = CF7AppsInternalSettings?.paymentGlobalCurrency?.[ appId ];
+    return localized && String( localized ).trim() !== ''
+        ? String( localized ).trim()
+        : '';
+};
+
+const isPaymentFormEnabled = ( value ) =>
+	value === true ||
+	value === 1 ||
+	value === '1' ||
+	value === 'true';
+
+const collectFormFields = ( appSettings, hasTabs ) => {
+	const settings = appSettings?.admin_settings?.general;
+	if ( ! settings?.fields ) {
+		return {};
+	}
+
+	if ( hasTabs ) {
+		const merged = {};
+		Object.keys( appSettings.setting_tabs || {} ).forEach( ( tabKey ) => {
+			Object.assign( merged, settings.fields[ tabKey ] || {} );
+		} );
+		return merged;
+	}
+
+	return settings.fields;
+};
+
+const getAccordionOpenUpdates = ( fields, invalidFieldKeys ) => {
+	const updates = {};
+	const invalidSet = new Set( invalidFieldKeys );
+
+	Object.keys( fields || {} ).forEach( ( fieldKey ) => {
+		const field = fields[ fieldKey ];
+		if (
+			field &&
+			field.type === 'collapsible_section' &&
+			Array.isArray( field.child_keys ) &&
+			field.child_keys.some( ( childKey ) => invalidSet.has( childKey ) )
+		) {
+			updates[ fieldKey ] = true;
+		}
+	} );
+
+	return updates;
+};
+
+const openAccordionsForFields = ( setOpenMap, fields, invalidFieldKeys ) => {
+	const updates = getAccordionOpenUpdates( fields, invalidFieldKeys );
+	if ( Object.keys( updates ).length === 0 ) {
+		return;
+	}
+
+	setOpenMap( ( prev ) => ( {
+		...prev,
+		...updates,
+	} ) );
+};
+
+const buildFormStateFromSettings = ( appSettings, app ) => {
+    let settings = appSettings['admin_settings']['general'];
+    let formState = {};
+    const tabsEnabled = Object.keys(appSettings.setting_tabs || {}).length > 0;
+
+    if (tabsEnabled) {
+        Object.keys(appSettings.setting_tabs).forEach((tabKey) => {
+            const tabFields = settings['fields'][tabKey] || {};
+
+            Object.keys(tabFields).forEach((fieldKey) => {
+                hydrateFieldValue(tabFields[fieldKey], fieldKey, formState);
+            });
+        });
+    } else {
+        Object.keys(settings['fields']).forEach((fieldKey) => {
+            const field = settings['fields'][fieldKey];
+
+            if ('template' !== fieldKey) {
+                hydrateFieldValue(field, fieldKey, formState);
+            }
+        });
+    }
+
+    if (app === 'webhook' && String(formState.method || '').toUpperCase() === 'GET' && formState.data_type === 'form') {
+        formState.data_type = 'json';
+    }
+
+    if (
+        ( app === 'stripe' || app === 'paypal' ) &&
+        ( ! formState.currency || String( formState.currency ).trim() === '' )
+    ) {
+        const globalCurrency = resolveGlobalPaymentCurrency( appSettings, app );
+        if ( globalCurrency ) {
+            formState.currency = globalCurrency;
+        }
+    }
+
+    if (app === 'webhook' && appSettings.has_pro) {
+        const pro = appSettings.webhook_pro_settings || {};
+        formState.selected_fields = Array.isArray(pro.selected_fields) ? pro.selected_fields : [];
+        formState.selected_fields_mode = pro.selected_fields_mode || 'all';
+        formState.webhooks = Array.isArray(pro.webhooks) ? pro.webhooks : [];
+        if (formState.failure_notifications === undefined) {
+            formState.failure_notifications = !!pro.failure_notifications;
+        }
+    }
+
+    return formState;
+};
+
+const buildOpenMapFromSettings = ( appSettings, app ) => {
+    let settings = appSettings['admin_settings']['general'];
+    let openMap = {};
+    const tabsEnabled = Object.keys(appSettings.setting_tabs || {}).length > 0;
+
+    if (tabsEnabled) {
+        Object.keys(appSettings.setting_tabs).forEach((tabKey) => {
+            const tabFields = settings['fields'][tabKey] || {};
+
+            Object.keys(tabFields).forEach((fieldKey) => {
+                const field = tabFields[fieldKey];
+                if (field && field.type === 'textarea') {
+                    openMap[fieldKey] = field.collapsible
+                        ? (app === 'webhook' ? true : false)
+                        : true;
+                }
+            });
+        });
+    } else {
+        Object.keys(settings['fields']).forEach((fieldKey) => {
+            const field = settings['fields'][fieldKey];
+            if (field && field.type === 'textarea') {
+                openMap[fieldKey] = field.collapsible
+                    ? (app === 'webhook' ? true : false)
+                    : true;
+            }
+            if (field && field.type === 'collapsible_section') {
+                openMap[fieldKey] = field.default_open !== undefined
+                    ? !!field.default_open
+                    : !field.collapsible;
+            }
+        });
+    }
+
+    return openMap;
+};
+
+const buildPaymentSavePayload = ( app, appSettings, formData ) => {
+    const payload = { ...formData };
+
+    payload.is_enabled = isPaymentFormEnabled( payload.is_enabled ) ? 1 : 0;
+
+    if ( app === 'stripe' || app === 'paypal' ) {
+        if ( ! payload.currency || String( payload.currency ).trim() === '' ) {
+            const globalCurrency = resolveGlobalPaymentCurrency( appSettings, app );
+            if ( globalCurrency ) {
+                payload.currency = globalCurrency;
+            }
+        }
+    }
+
+    return payload;
+};
+
+const getPaymentFormSettingsTitle = ( appId ) => {
+	const paymentTitles = {
+		stripe: __( 'Stripe Checkout Redirection', 'cf7apps' ),
+		paypal: __( 'PayPal Checkout Redirection', 'cf7apps' ),
+		square: __( 'Square Checkout Redirection', 'cf7apps' ),
+	};
+
+	return paymentTitles[ appId ] || '';
+};
+
+const hydrateFieldValue = ( field, fieldKey, formState ) => {
+    if ( fieldKey === 'template' || typeof field !== 'object' || ! field?.type ) {
+        return;
+    }
+
+    if ( field.type === 'text' || field.type === 'number' || field.type === 'radio' ) {
+        if ( field.value !== undefined && field.value !== null && field.value !== '' ) {
+            formState[ fieldKey ] = field.value;
+        } else {
+            formState[ fieldKey ] = field.default;
+        }
+    } else if ( field.type === 'checkbox' ) {
+        if ( field.checked !== undefined ) {
+            formState[ fieldKey ] = field.checked;
+        } else {
+            formState[ fieldKey ] = field.default;
+        }
+    } else if ( field.type === 'textarea' ) {
+        formState[ fieldKey ] = field.value !== undefined
+            ? field.value
+            : ( field.default ? field.default : '' );
+    } else if ( field.type === 'select' ) {
+        const selected =
+            field.selected !== undefined &&
+            field.selected !== null &&
+            String( field.selected ).trim() !== ''
+                ? field.selected
+                : undefined;
+
+        if ( selected !== undefined ) {
+            formState[ fieldKey ] = selected;
+        } else if (
+            field.default !== undefined &&
+            String( field.default ).trim() !== ''
+        ) {
+            formState[ fieldKey ] = field.default;
+        }
+    }
+
+    if ( field.sub_fields ) {
+        Object.keys( field.sub_fields ).forEach( ( subFieldKey ) => {
+            const subField = field.sub_fields[ subFieldKey ];
+
+            if ( subField.type === 'text' || subField.type === 'number' ) {
+                if ( subField.value ) {
+                    formState[ subFieldKey ] = subField.value;
+                } else {
+                    formState[ subFieldKey ] = subField.default;
+                }
+            } else if ( subField.type === 'checkbox' ) {
+                if ( subField.checked !== undefined ) {
+                    formState[ subFieldKey ] = subField.checked;
+                } else {
+                    formState[ subFieldKey ] = subField.default;
+                }
+            } else if ( subField.type === 'select' ) {
+                if ( subField.selected ) {
+                    formState[ subFieldKey ] = subField.selected;
+                } else {
+                    formState[ subFieldKey ] = subField.default;
+                }
+            }
+        } );
+    }
+};
+
+const FormSettingsHeader = ({ appSettings }) => {
+    const parentKey = normalizeParentMenu(appSettings?.parent_menu);
+    const isIntegrationLike = [
+        'integration',
+        'integrations',
+        'payment',
+        'payments',
+        'payment-gate',
+    ].includes(parentKey);
+    const settingsTitle = isIntegrationLike
+        ? sprintf(__('%s Integration Settings', 'cf7apps'), appSettings.title)
+        : sprintf(__('%s Settings', 'cf7apps'), appSettings.title);
+
+    return (
+        <div className="cf7apps-form-settings-header">
+            <div>
+                <h2 className="cf7apps-form-settings-title">{settingsTitle}</h2>
+            </div>
+        </div>
+    );
+};
+
+const TextareaField = ({ fieldKey, field, className, description, disabled, openMap, setOpenMap, formData, handleInputChange, isWebhookDisabled, isAppShell = false }) => {
+    const open = (openMap && openMap[fieldKey] !== undefined) ? openMap[fieldKey] : !field.collapsible;
     const toggleOpen = () => {
         if (isWebhookDisabled) return;
-        setOpenMap( prev => ( {
+        setOpenMap(prev => ({
             ...prev,
-            [ fieldKey ]: ! prev[ fieldKey ]
-        } ) );
+            [fieldKey]: !prev[fieldKey]
+        }));
     };
-    // Chevron icon SVG
+    // Chevron rendered via CSS ::after on the trigger (stroke SVG was hard to see in WP admin).
     const ChevronIcon = ({ isOpen = false }) => (
-        <svg 
-            width="12" 
-            height="12" 
-            viewBox="0 0 12 12" 
-            fill="none" 
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ 
-                transition: 'transform 0.2s ease'
-            }}
-        >
-            <path 
-                d={isOpen ? "M3 7L6 4L9 7" : "M3 5L6 8L9 5"} 
-                stroke="#666" 
-                strokeWidth="1.5" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-            />
-        </svg>
+        <span
+            className={`cf7apps-collapsible-chevron${isOpen ? ' is-open' : ''}`}
+            aria-hidden="true"
+        />
     );
 
     return (
-        <div className="cf7apps-form-group cf7apps-settings">
-            { field.collapsible ? (
-                <div 
-                    style={ { 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between', 
-                        gap: '8px', 
-                        width: '500px',
+        <div className={`cf7apps-form-group cf7apps-settings${ isAppShell ? ' cf7apps-app-field-group' : '' }`}>
+            {field.collapsible ? (
+                <div
+                    className="cf7apps-settings-collapsible-trigger cf7apps-form-settings-collapsible"
+                    style={isAppShell ? undefined : {
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        width: '100%',
+                        maxWidth: '500px',
                         padding: '10px 12px',
-                        backgroundColor: field.collapsed_button_color ? `${field.collapsed_button_color}20` : '#e8f4f8',
-                        borderRadius: '4px',
+                        borderRadius: '6px',
                         cursor: isWebhookDisabled ? 'not-allowed' : 'pointer',
                         opacity: isWebhookDisabled ? 0.6 : 1,
                         border: 'none',
-                        transition: 'background-color 0.2s ease'
-                    } }
-                    onClick={ toggleOpen }
-                    onMouseEnter={(e) => {
-                        if (!isWebhookDisabled) {
-                            e.currentTarget.style.backgroundColor = field.collapsed_button_color ? `${field.collapsed_button_color}30` : '#d4e8f0';
+                        transition: 'background-color 0.2s ease',
+                        ...(field.collapsed_button_color
+                            ? {
+                                backgroundColor: `${field.collapsed_button_color}20`,
+                            }
+                            : {}),
+                    }}
+                    onClick={toggleOpen}
+                    onMouseEnter={isAppShell ? undefined : (e) => {
+                        if (!isWebhookDisabled && field.collapsed_button_color) {
+                            e.currentTarget.style.backgroundColor = `${field.collapsed_button_color}30`;
                         }
                     }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = field.collapsed_button_color ? `${field.collapsed_button_color}20` : '#e8f4f8';
+                    onMouseLeave={isAppShell ? undefined : (e) => {
+                        if (field.collapsed_button_color) {
+                            e.currentTarget.style.backgroundColor = `${field.collapsed_button_color}20`;
+                        }
                     }}
                     role="button"
                     tabIndex={0}
@@ -84,41 +404,41 @@ const TextareaField = ({ fieldKey, field, className, description, disabled, open
                             toggleOpen();
                         }
                     }}
-                    aria-expanded={ !! open }
+                    aria-expanded={!!open}
                 >
-                    <div><label style={{ margin: 0, cursor: isWebhookDisabled ? 'not-allowed' : 'pointer', fontWeight: '500' }}>{ field.title }</label></div>
+                    <div><label style={isAppShell ? undefined : { margin: 0, cursor: isWebhookDisabled ? 'not-allowed' : 'pointer', fontWeight: '500' }}>{field.title}</label></div>
                     <ChevronIcon isOpen={open} />
                 </div>
             ) : (
-                <div><label><b>{ field.title }</b></label></div>
-            ) }
+                <div><label><b>{field.title}</b></label></div>
+            )}
 
-            { open && (
-                <div style={ { marginTop: '10px'} }>
-                    { field.pre_text && (
-                        <div className="cf7apps-pre-text" style={ { marginBottom: '8px', color: '#444' } }>
-                            { parse( String( field.pre_text ) ) }
+            {open && (
+                <div className={isAppShell ? 'cf7apps-app-collapsible-panel' : undefined} style={isAppShell ? undefined : { marginTop: '10px' }}>
+                    {field.pre_text && (
+                        <div className="cf7apps-pre-text" style={isAppShell ? undefined : { marginBottom: '8px', color: '#444' }}>
+                            {parse(String(field.pre_text))}
                         </div>
-                    ) }
+                    )}
                     <textarea
-                        className={ `cf7apps-form-input ${ className }` }
-                        name={ fieldKey }
-                        value={ formData[ fieldKey ] || '' }
-                        onChange={ handleInputChange }
-                        rows={ 3 }
-                        disabled={ disabled }
-                        style={ { width: '500px', minHeight: '120px', boxSizing: 'border-box', padding: '12px' } }
+                        className={`cf7apps-form-input ${className}`}
+                        name={fieldKey}
+                        value={formData[fieldKey] || ''}
+                        onChange={handleInputChange}
+                        rows={3}
+                        disabled={disabled}
+                        style={isAppShell ? undefined : { width: '100%', maxWidth: '500px', minHeight: '120px', boxSizing: 'border-box', padding: '12px' }}
                     ></textarea>
 
-                    { field.post_text && (
-                        <div className="cf7apps-post-text" style={ { marginTop: '8px', color: '#444' } }>
-                            { parse( String( field.post_text ) ) }
+                    {field.post_text && (
+                        <div className="cf7apps-post-text" style={isAppShell ? undefined : { marginTop: '8px', color: '#444' }}>
+                            {parse(String(field.post_text))}
                         </div>
-                    ) }
+                    )}
 
-                    <CF7AppsHelpText description={ description } />
+                    <CF7AppsHelpText description={description} />
                 </div>
-            ) }
+            )}
         </div>
     );
 };
@@ -127,177 +447,238 @@ const CF7AppsSettings = () => {
     let { app } = useParams();
     const location = useLocation();
 
-    const [ isLoading, setIsLoading ] = useState( true );
-    const [ appSettings, setAppSettings ] = useState( false );
-    const [ formData, setFormData ] = useState( {} );
-    const [ openMap, setOpenMap ] = useState( {} );
-    const [ isSaving, setIsSaving ] = useState( false );
-    const [ notice, setNotice ] = useState( { show: false, text: '' } );
+    const [isLoading, setIsLoading] = useState(true);
+    const [appSettings, setAppSettings] = useState(false);
+    const [formData, setFormData] = useState({});
+    const [openMap, setOpenMap] = useState({});
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
+    const [notice, setNotice] = useState({ show: false, text: '' });
+    const [hasTabs, setHasTabs] = useState(false);
+    const [tabValue, setTabValue] = useState('1');
+    const [, setProTemplateRevision] = useState(0);
 
     app = app ? app : 'cf7-redirection';
+
     useEffect( () => {
-        setIsLoading(true); // Reset loading state when app changes
-        getApps( app, CF7AppsInternalSettings.formID )
-            .then( ( appSettings ) => {
-                let settings = appSettings['admin_settings']['general'];
-                let _formData = {};
-                Object.keys( settings['fields'] ).map( ( fieldKey ) => {
-                    const field = settings['fields'][ fieldKey ];
+        if ( typeof window === 'undefined' ) {
+            return undefined;
+        }
 
-                        if ( 'template' !== fieldKey ) {
-                        if ( 'text' === field.type || 'number' === field.type || 'radio' === field.type ) {
-                            if ( field.value ) {
-                                _formData[ fieldKey ] = field.value;
-                            } else {
-                                _formData[ fieldKey ] = field.default;
-                            }
-                        } else if ( 'checkbox' === field.type ) {
-                            // Check if checked property is explicitly set (could be true or false)
-                            if ( field.checked !== undefined ) {
-                                _formData[ fieldKey ] = field.checked;
-                            } else {
-                                _formData[ fieldKey ] = field.default;
-                            }
-                        }
+        const onTemplateRegistered = () => {
+            setProTemplateRevision( ( revision ) => revision + 1 );
+        };
 
-                        // textarea initial value
-                        else if ( 'textarea' === field.type ) {
-                            if ( field.value ) {
-                                _formData[ fieldKey ] = field.value;
-                            } else {
-                                _formData[ fieldKey ] = field.default ? field.default : '';
-                            }
-                        } else if ( 'select' === field.type ) {
-                            if ( field.selected !== undefined && field.selected !== null && field.selected !== '' ) {
-                                _formData[ fieldKey ] = field.selected;
-                            } else if ( field.default !== undefined ) {
-                                _formData[ fieldKey ] = field.default;
-                            }
-                        }
+        window.addEventListener( 'cf7apps-template-registered', onTemplateRegistered );
+        return () => {
+            window.removeEventListener( 'cf7apps-template-registered', onTemplateRegistered );
+        };
+    }, [] );
+    useEffect(() => {
+        const hash = window.location.hash;
+        const explodedHash = hash.split('/');
+        if (explodedHash.length > 3) {
+            setTabValue(explodedHash[3]);
+        }
+    }, [app, location.pathname]);
 
-                        if ( settings['fields'][ fieldKey ].sub_fields ) {
-                            Object.keys( settings['fields'][ fieldKey ].sub_fields ).map( ( subFieldKey ) => {
-                                const subField = settings['fields'][ fieldKey ].sub_fields[ subFieldKey ];
-                                if ( subField.type === 'text' || subField.type === 'number' ) {
+    useEffect(() => {
+        setIsLoading(true);
+        getApps(app, CF7AppsInternalSettings.formID)
+            .then((appSettings) => {
+                const tabsEnabled = Object.keys(appSettings.setting_tabs || {}).length > 0;
 
-                                    if ( subField.value ) {
-                                        _formData[ subFieldKey ] = subField.value;
-                                    } else {
-                                        _formData[ subFieldKey ] = subField.default;
-                                    }
+                setHasTabs(tabsEnabled);
+                setFormData(buildFormStateFromSettings(appSettings, app));
+                setOpenMap(buildOpenMapFromSettings(appSettings, app));
+                setAppSettings(appSettings);
+                setIsLoading(false);
+            }).catch((error) => {
+                setIsLoading(false);
+            });
+    }, [app, location.pathname]);
 
-                                } else if ( subField.type === 'checkbox' ) {
-                                    // Check if checked property is explicitly set (could be true or false)
-                                    if ( subField.checked !== undefined ) {
-                                        _formData[ subFieldKey ] = subField.checked;
-                                    } else {
-                                        _formData[ subFieldKey ] = subField.default;
-                                    }
-
-                                } else if ( subField.type === 'select' ) {
-                                    if ( subField.selected ) {
-                                        _formData[ subFieldKey ] = subField.selected;
-                                    } else {
-                                        _formData[ subFieldKey ] = subField.default;
-                                    }
-                                }
-                            } );
-                        }
-
-                    }
-
-                } );
-
-                if ( app === 'webhook' && String( _formData.method || '' ).toUpperCase() === 'GET' && _formData.data_type === 'form' ) {
-                    _formData.data_type = 'json';
-                }
-
-                setFormData( _formData );
-                // initialize openMap for textarea fields so open state survives rerenders
-                let _openMap = {};
-                Object.keys( settings['fields'] ).map( ( fieldKey ) => {
-                    const field = settings['fields'][ fieldKey ];
-                    if ( field && field.type === 'textarea' ) {
-                        _openMap[ fieldKey ] = ! field.collapsible;
-                    }
-                } );
-                setOpenMap( _openMap );
-                setAppSettings( appSettings );
-                setIsLoading( false );
-
-            } ).catch( ( error ) => {
-                setIsLoading( false );
-            } );
-    }, [ app, location.pathname ] );
-
-    const handleInputChange = ( e ) => {
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData( ( prev ) => {
+        setFormData((prev) => {
             const next = {
                 ...prev,
-                [ name ]: value,
+                [name]: value,
             };
-            if ( app === 'webhook' && name === 'method' && String( value ).toUpperCase() === 'GET' && prev.data_type === 'form' ) {
+            if (app === 'webhook' && name === 'method' && String(value).toUpperCase() === 'GET' && prev.data_type === 'form') {
                 next.data_type = 'json';
             }
             return next;
-        } );
+        });
+        if ( fieldErrors[ name ] ) {
+            setFieldErrors( ( prev ) => ( {
+                ...prev,
+                [ name ]: false,
+            } ) );
+        }
     }
 
     const saveAppSettings = () => {
 
-        let missingRequired = false;
-        let requiredMessage = '';
-
-        Object.keys(appSettings.admin_settings['general']['fields']).some((fieldKey) => {
-            const field = appSettings.admin_settings['general']['fields'][fieldKey];
-            if (field && field.required && (formData[fieldKey] === '' || formData[fieldKey] === undefined)) {
-                missingRequired = true;
-                requiredMessage = field.required_message || __( 'Please fill all required fields.', 'cf7apps' );
-                return true;
-            } else {
-
-                if (field && field.sub_fields) {
-
-                    if ( field.sub_fields[ formData[ fieldKey ] ] && field.sub_fields[ formData[ fieldKey ] ].required && (formData[ formData[ fieldKey ] ] === '' || formData[ formData[ fieldKey ] ] === undefined)) {
-                        missingRequired = true;
-                        requiredMessage = field.sub_fields[ formData[ fieldKey ] ].required_message || __( 'Please fill all required fields.', 'cf7apps' );
-                        return true;
-                    }
-
-
-                }
-            }
-
-            return false;
-        });
-
-        if (missingRequired) {
-            setNotice({ show: true, text: requiredMessage });
-            toast.error( __( 'Error! Please fill all required fields.', 'cf7apps' ) );
+        if ( ! CF7AppsInternalSettings?.formID || Number( CF7AppsInternalSettings.formID ) <= 0 ) {
+            const unsavedFormMessage = __(
+                'Note: Save the Contact Form 7 form before configuring CF7 app settings. Settings can only be saved after the form has been created.',
+                'cf7apps'
+            );
+            toast.error(unsavedFormMessage);
             setIsSaving(false);
             return;
         }
 
-        // Validate webhook URL format (only for webhook app)
-        if ( app === 'webhook' && formData['is_enabled'] ) {
-            const webhookUrl = formData['webhook_url'] ? formData['webhook_url'].trim() : '';
-            
-            // Check if webhook URL is empty
-            if ( webhookUrl === '' ) {
-                const errorMessage = __( 'Webhook URL cannot be empty.', 'cf7apps' );
-                setNotice({ show: true, text: errorMessage });
-                toast.error( errorMessage );
-                setIsSaving(false);
+        const appGloballyEnabled = appSettings.is_enabled === true;
+
+        let missingRequired = false;
+        let requiredMessage = '';
+        let missingFieldKey = null;
+
+        const validateFields = (fields) => {
+            const hasMultiWebhooks = app === 'webhook'
+                && Array.isArray(formData.webhooks)
+                && formData.webhooks.some((item) => item && item.enabled !== false && String(item.webhook_url || '').trim());
+
+            Object.keys(fields).some((fieldKey) => {
+                const field = fields[fieldKey];
+
+                if ( ! field || typeof field !== 'object' || ! field.type ) {
+                    return false;
+                }
+
+                if (hasMultiWebhooks && fieldKey === 'webhook_url') {
+                    return false;
+                }
+
+                if (field.required && (formData[fieldKey] === '' || formData[fieldKey] === undefined)) {
+                    missingRequired = true;
+                    missingFieldKey = fieldKey;
+                    requiredMessage = field.required_message || __('Please fill all required fields.', 'cf7apps');
+                    return true;
+                }
+
+                if (field.sub_fields) {
+                    if (field.sub_fields[formData[fieldKey]] && field.sub_fields[formData[fieldKey]].required && (formData[formData[fieldKey]] === '' || formData[formData[fieldKey]] === undefined)) {
+                        missingRequired = true;
+                        missingFieldKey = formData[fieldKey];
+                        requiredMessage = field.sub_fields[formData[fieldKey]].required_message || __('Please fill all required fields.', 'cf7apps');
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        };
+
+        const failValidation = ( errorMessage, invalidFieldKeys = [] ) => {
+            const fields = collectFormFields( appSettings, hasTabs );
+            if ( invalidFieldKeys.length > 0 ) {
+                openAccordionsForFields( setOpenMap, fields, invalidFieldKeys );
+                const fieldErrorMap = {};
+                invalidFieldKeys.forEach( ( key ) => {
+                    fieldErrorMap[ key ] = true;
+                } );
+                setFieldErrors( fieldErrorMap );
+            }
+            setNotice( { show: true, text: errorMessage } );
+            toast.error( errorMessage );
+            setIsSaving( false );
+        };
+
+        if (appGloballyEnabled) {
+            if (hasTabs) {
+                Object.keys(appSettings.setting_tabs).forEach((tabKey) => {
+                    if (missingRequired) {
+                        return;
+                    }
+
+                    validateFields(appSettings.admin_settings['general']['fields'][tabKey] || {});
+                });
+            } else {
+                validateFields(appSettings.admin_settings['general']['fields']);
+            }
+        }
+
+        if (missingRequired) {
+            failValidation(
+                requiredMessage || __( 'Error! Please fill all required fields.', 'cf7apps' ),
+                missingFieldKey ? [ missingFieldKey ] : []
+            );
+            return;
+        }
+
+        if (
+            appGloballyEnabled &&
+            PAYMENT_FORM_APPS.includes(app) &&
+            isPaymentFormEnabled(formData['is_enabled'])
+        ) {
+            const emailMap = formData['customer_email']
+                ? String(formData['customer_email']).trim()
+                : '';
+
+            if (emailMap === '') {
+                failValidation(
+                    __( 'Customer email field is required.', 'cf7apps' ),
+                    [ 'customer_email' ]
+                );
                 return;
             }
-            
-            // Check if webhook URL has correct format
-            if ( !webhookUrl.startsWith('http://') && !webhookUrl.startsWith('https://') ) {
-                const errorMessage = __( 'Webhook URL must start with http:// or https://', 'cf7apps' );
-                setNotice({ show: true, text: errorMessage });
-                toast.error( errorMessage );
-                setIsSaving(false);
+
+            const currency = formData['currency']
+                ? String(formData['currency']).trim()
+                : resolveGlobalPaymentCurrency(appSettings, app);
+
+            if (app !== 'square' && currency === '') {
+                failValidation(
+                    __( 'Currency is required.', 'cf7apps' ),
+                    [ 'currency' ]
+                );
+                return;
+            }
+
+            const amountField = formData['amount_field']
+                ? String(formData['amount_field']).trim()
+                : '';
+
+            if (amountField === '') {
+                failValidation(
+                    __(
+                        'Amount field is required. Enter a fixed amount (e.g. 25) or a form tag (e.g. [amount]).',
+                        'cf7apps'
+                    ),
+                    [ 'amount_field' ]
+                );
+                return;
+            }
+
+            const productNameField = formData['product_name']
+                ? String(formData['product_name']).trim()
+                : '';
+
+            if (productNameField === '') {
+                failValidation(
+                    __( 'Product name field is required.', 'cf7apps' ),
+                    [ 'product_name' ]
+                );
+                return;
+            }
+
+            const redirectValidation = validateRedirectUrls( app, formData );
+            if ( redirectValidation ) {
+                failValidation(
+                    redirectValidation.message,
+                    redirectValidation.missing
+                );
+                return;
+            }
+        }
+
+        if ( appGloballyEnabled && app === 'webhook' && formData.is_enabled ) {
+            const webhookValidation = validateWebhookUrls( formData );
+            if ( ! webhookValidation.valid ) {
+                failValidation( webhookValidation.message );
                 return;
             }
         }
@@ -305,229 +686,574 @@ const CF7AppsSettings = () => {
         // Clear any previous warning once validation passes
         setNotice({ show: false, text: '' });
 
-        setIsSaving( true );
-        saveSettings( app, formData, CF7AppsInternalSettings.formID )
-            .then( response => {
-                setIsSaving( false );
-                toast.success( __( 'Great! Settings Saved Successfully', 'cf7apps' ) );
-            } ).catch( error => {
-                setIsSaving( false );
-                toast.error( __( 'Error! Something Went Wrong', 'cf7apps' ) );
-        } );
+        setIsSaving(true);
+
+        const payload = PAYMENT_FORM_APPS.includes(app)
+            ? buildPaymentSavePayload(app, appSettings, formData)
+            : formData;
+
+        const switchingPaymentGateway =
+            PAYMENT_FORM_APPS.includes(app) &&
+            isPaymentFormEnabled(payload.is_enabled) &&
+            appSettings.enabled_form_payment_gateway &&
+            appSettings.enabled_form_payment_gateway !== app;
+
+        saveSettings(app, payload, CF7AppsInternalSettings.formID)
+            .then(response => {
+                return getApps(app, CF7AppsInternalSettings.formID)
+                    .then((freshSettings) => {
+                        setAppSettings(freshSettings);
+                        setFormData(buildFormStateFromSettings(freshSettings, app));
+                        setOpenMap(buildOpenMapFromSettings(freshSettings, app));
+                    });
+            })
+            .then(() => {
+                setIsSaving(false);
+                setFieldErrors({});
+                if (switchingPaymentGateway) {
+                    toast.success(
+                        __(
+                            'Payment gateway updated. The previous gateway was disabled for this form.',
+                            'cf7apps'
+                        )
+                    );
+                } else {
+                    toast.success(__('Great! Settings Saved Successfully', 'cf7apps'));
+                }
+            }).catch(error => {
+                setIsSaving(false);
+                toast.error(__('Error! Something Went Wrong', 'cf7apps'));
+            });
     };
 
 
     const Settings = () => {
+        const isRedirectionSettings = app === 'cf7-redirection';
+        const isEntriesSettings = app === 'cf7-entries';
+        const isWebhookSettings = app === 'webhook';
+        const isPaymentFormSettings = PAYMENT_FORM_APPS.includes(app);
+        const appGloballyEnabled = appSettings.is_enabled === true;
+        const isAppSettingsShell = isRedirectionSettings || isEntriesSettings || isWebhookSettings;
+        const formClassName = [
+            'cf7apps-form',
+            isAppSettingsShell ? 'cf7apps-app-settings-form' : '',
+        ]
+            .filter(Boolean)
+            .join(' ');
+
+        const renderSaveButton = (fieldKey, field) => {
+            const formEditorAssets =
+                CF7AppsInternalSettings?.formEditorAssetsURL ||
+                `${CF7AppsInternalSettings?.pluginURL || ''}includes/apps/cf7-internal-settings/assets/images/form-editor/`;
+            const saveIcon = formEditorAssets
+                ? `${formEditorAssets}save-icon.svg`
+                : '';
+
+            const saveButton = (
+                <div className="cf7apps-form-group cf7apps-form-settings-save">
+                    <Button
+                        className="cf7apps-btn tertiary-primary cf7apps-form-settings-save-btn"
+                        onClick={saveAppSettings}
+                        isBusy={isSaving}
+                        disabled={field.disabled}
+                    >
+                        {saveIcon && (
+                            <img
+                                src={saveIcon}
+                                alt=""
+                                width={18}
+                                height={18}
+                                className="cf7apps-form-settings-save-btn__icon"
+                                aria-hidden="true"
+                            />
+                        )}
+                        {field.text}
+                    </Button>
+                </div>
+            );
+
+            if (isRedirectionSettings) {
+                return (
+                    <div key={fieldKey} className="cf7apps-app-settings-save-wrap">
+                        {saveButton}
+                    </div>
+                );
+            }
+
+            if (isWebhookSettings) {
+                return (
+                    <div key={fieldKey} className="cf7apps-app-settings-save-wrap">
+                        {saveButton}
+                    </div>
+                );
+            }
+
+            return (
+                <div key={fieldKey}>
+                    {saveButton}
+                </div>
+            );
+        };
+
+        const renderCheckboxField = (fieldKey, field, className, help) => {
+            const toggleDisabled = ! appGloballyEnabled || field.disabled;
+            if (isAppSettingsShell) {
+                return (
+                    <div key={fieldKey} className="cf7apps-form-toggle-field">
+                        <CF7AppsFormToggle
+                            name={fieldKey}
+                            label={field.title}
+                            help={help}
+                            className={className}
+                            isSelected={formData[fieldKey]}
+                            disabled={ toggleDisabled }
+                            onChange={(nextValue) => {
+                                setFormData((prevFormData) => ({
+                                    ...prevFormData,
+                                    [fieldKey]: nextValue,
+                                }));
+                            }}
+                        />
+                    </div>
+                );
+            }
+
+            return (
+                <div key={fieldKey} className="cf7apps-form-group cf7apps-form-toggle-field">
+                    <CF7AppsFormToggle
+                        label={field.title}
+                        help={help}
+                        isSelected={formData[fieldKey]}
+                        onChange={() => {
+                            setFormData((prevFormData) => ({
+                                ...prevFormData,
+                                [fieldKey]: !prevFormData[fieldKey],
+                            }));
+                        }}
+                        disabled={ toggleDisabled }
+                    />
+                </div>
+            );
+        };
+
+        const renderSettingsField = (fieldKey, field, tabSettings = null, tabKey = '') => {
+            const className = undefined === field?.class ? '' : field.class;
+            const help = field?.help;
+            const placeholder = undefined === field?.placeholder ? '' : field.placeholder;
+            const fieldDisabled = ! appGloballyEnabled || field.disabled;
+
+            if (app === 'webhook') {
+                const webhookEnabled = formData['is_enabled'];
+                if (!webhookEnabled && fieldKey !== 'notice' && fieldKey !== 'is_enabled' && field?.type !== 'save_button') {
+                    return null;
+                }
+            }
+
+            if (app === 'cf7-redirection') {
+                const redirectionEnabled = formData['enable_redirection'];
+                if (redirectionEnabled !== true && fieldKey !== 'notice' && fieldKey !== 'enable_redirection' && field?.type !== 'save_button') {
+                    return null;
+                }
+            }
+
+            if ('title' === fieldKey) {
+                if (isAppSettingsShell) {
+                    return null;
+                }
+
+                return (
+                    <h3 key={fieldKey} className="cf7apps-form-settings-section-title">
+                        {tabSettings?.title || appSettings.admin_settings['general']['fields'].title}
+                    </h3>
+                );
+            }
+
+            if ('description' === fieldKey) {
+                if (isAppSettingsShell) {
+                    return null;
+                }
+
+                return (
+                    <p key={fieldKey} className={'cf7apps-help-text'}>
+                        {tabSettings?.description || appSettings.admin_settings['general']['fields'].description}
+                    </p>
+                );
+            }
+
+            if (fieldKey === 'template' || (typeof field === 'string' && hasTemplate(field))) {
+                const templateKey = fieldKey === 'template' ? field : field;
+                const Template = getTemplate(templateKey);
+
+                if (!Template) {
+                    if (
+                        templateKey === 'cf7WebhookFormProSettings' ||
+                        templateKey === 'PaymentFormSettingsFields'
+                    ) {
+                        return (
+                            <CF7AppsSkeletonLoader
+                                key={ fieldKey }
+                                height={ 140 }
+                            />
+                        );
+                    }
+
+                    return null;
+                }
+
+                return (
+                    <Template
+                        key={fieldKey}
+                        appSettings={appSettings}
+                        formData={formData}
+                        setFormData={setFormData}
+                        tabKey={tabKey}
+                    />
+                );
+            }
+
+            if ('notice' === field?.type) {
+                if (isAppSettingsShell) {
+                    return null;
+                }
+
+                return (
+                    <CF7AppsFormNotice
+                        key={fieldKey}
+                        type={className}
+                        text={field.text}
+                    />
+                );
+            }
+
+            if ('text' === field?.type) {
+                return (
+                    <CF7AppsTextField
+                        key={fieldKey}
+                        label={field.title}
+                        description={parse(String(field.description))}
+                        className={className}
+                        placeholder={placeholder}
+                        value={formData[fieldKey]}
+                        name={fieldKey}
+                        onChange={handleInputChange}
+                        required={ appGloballyEnabled && field.required }
+                        disabled={ fieldDisabled }
+                        variant={isAppSettingsShell ? 'app' : undefined}
+                    />
+                );
+            }
+
+            if ('number' === field?.type) {
+                return (
+                    <CF7AppsNumberField
+                        key={fieldKey}
+                        label={field.title}
+                        description={parse(String(field.description))}
+                        className={className}
+                        name={fieldKey}
+                        placeholder={placeholder}
+                        value={formData[fieldKey]}
+                        onChange={handleInputChange}
+                        disabled={ fieldDisabled }
+                        min={field.min}
+                    />
+                );
+            }
+
+            if ('checkbox' === field?.type) {
+                return renderCheckboxField(fieldKey, field, className, help);
+            }
+
+            if ('select' === field?.type) {
+                const isWebhookDataType = app === 'webhook' && fieldKey === 'data_type';
+                const selectOptions = isWebhookDataType
+                    ? getWebhookDataTypeOptions(formData.method, field.options)
+                    : field.options;
+                const selectedVal = formData[fieldKey] !== undefined && formData[fieldKey] !== null
+                    ? formData[fieldKey]
+                    : field.selected;
+                return (
+                    <CF7AppsSelectField
+                        key={fieldKey}
+                        label={field.title}
+                        className={className}
+                        name={fieldKey}
+                        selected={selectedVal}
+                        options={selectOptions}
+                        onChange={handleInputChange}
+                        description={parse(String(field.description))}
+                        disabled={ fieldDisabled }
+                        variant={isAppSettingsShell ? 'app' : undefined}
+                    />
+                );
+            }
+
+            if ('textarea' === field?.type) {
+                const isWebhookDisabled = app === 'webhook' && ( ! formData['is_enabled'] || ! appGloballyEnabled );
+                return (
+                    <TextareaField
+                        key={fieldKey}
+                        fieldKey={fieldKey}
+                        field={field}
+                        className={className}
+                        description={parse(String(field.description))}
+                        disabled={ fieldDisabled }
+                        openMap={openMap}
+                        setOpenMap={setOpenMap}
+                        formData={formData}
+                        handleInputChange={handleInputChange}
+                        isWebhookDisabled={isWebhookDisabled}
+                        isAppShell={isAppSettingsShell}
+                    />
+                );
+            }
+
+            if ('save_button' === field?.type) {
+                return renderSaveButton(fieldKey, field);
+            }
+
+            if ('radio' === field?.type) {
+                const subKey = formData[fieldKey];
+                let subField = field.sub_fields && field.sub_fields[subKey];
+                if (subField) {
+                    const currentSubValue = formData[subKey];
+                    if (subField.type === 'select') {
+                        subField = { ...subField, selected: currentSubValue };
+                    } else {
+                        subField = { ...subField, value: currentSubValue };
+                    }
+                    if ( ! appGloballyEnabled && subField.required ) {
+                        subField = { ...subField, required: false };
+                    }
+                }
+
+                return (
+                    <CF7AppsRadioField
+                        key={fieldKey}
+                        label={field.title}
+                        className={className}
+                        options={field.options}
+                        name={fieldKey}
+                        onChange={handleInputChange}
+                        value={formData[fieldKey]}
+                        subFields={subField}
+                        disabled={ fieldDisabled }
+                        variant={isAppSettingsShell ? 'app' : undefined}
+                    />
+                );
+            }
+
+            return null;
+        };
+
+        const renderTabPanel = (tabKey, tabIndex) => {
+            if (`${tabIndex + 1}` !== tabValue) {
+                return null;
+            }
+
+            const tabSettings = appSettings.admin_settings['general']['fields'][tabKey] || {};
+
+            return (
+                <div
+                    key={tabKey}
+                    className={`MuiTabPanel-root${tabKey === 'entries' ? ' cf7apps-app-settings-tabpanel-entries' : ''}`}
+                >
+                    {Object.keys(tabSettings).map((fieldKey) =>
+                        renderSettingsField(fieldKey, tabSettings[fieldKey], tabSettings, tabKey)
+                    )}
+                </div>
+            );
+        };
+
+        if (hasTabs) {
+            return (
+                <div className={formClassName}>
+                    {notice.show && !isUnsavedForm && (
+                        <CF7AppsNotice
+                            type={'warning'}
+                            text={notice.text}
+                        />
+                    )}
+
+                    {hasTabs && (
+                        <CF7AppsAppSettingsTabs
+                            tabs={appSettings.setting_tabs}
+                            activeTab={tabValue}
+                            onChange={setTabValue}
+                        />
+                    )}
+
+                    {Object.keys(appSettings.setting_tabs).map((tabKey, tabIndex) =>
+                        renderTabPanel(tabKey, tabIndex)
+                    )}
+                </div>
+            );
+        }
+
+        if (isPaymentFormSettings) {
+            const PaymentFormSettingsFields = getPaymentFormSettingsFields();
+            if ( ! PaymentFormSettingsFields ) {
+                return (
+                    <CF7AppsSkeletonLoader height={ 420 } width="100%" />
+                );
+            }
+            return (
+                <PaymentFormSettingsFields
+                    app={app}
+                    fields={appSettings.admin_settings['general']['fields']}
+                    formData={formData}
+                    setFormData={setFormData}
+                    openMap={openMap}
+                    setOpenMap={setOpenMap}
+                    fieldErrors={fieldErrors}
+                    handleInputChange={handleInputChange}
+                    saveAppSettings={saveAppSettings}
+                    isSaving={isSaving}
+                    notice={notice}
+                    isUnsavedForm={isUnsavedForm}
+                    globalDefaultCurrency={
+                        resolveGlobalPaymentCurrency( appSettings, app )
+                    }
+                    enabledFormPaymentGateway={
+                        appSettings.enabled_form_payment_gateway || ''
+                    }
+                    enabledFormPaymentGatewayLabel={
+                        appSettings.enabled_form_payment_gateway_label || ''
+                    }
+                    appGloballyEnabled={ appSettings.is_enabled === true }
+                />
+            );
+        }
+
+        const enabledFormPaymentGateway = appSettings.enabled_form_payment_gateway || '';
+
         return (
-            <div className={ 'cf7apps-form' }>
-                <div className={ 'MuiTabPanel-root' }>
+            <div className={formClassName}>
+                <div className={'MuiTabPanel-root'}>
                     {
-                        notice.show && <CF7AppsNotice
-                            type={ 'warning' }
-                            text={ notice.text }
+                        notice.show && !isAppSettingsShell && !isUnsavedForm && <CF7AppsNotice
+                            type={'warning'}
+                            text={notice.text}
                         />
                     }
 
+                    {isRedirectionSettings && enabledFormPaymentGateway ? (
+                        <CF7AppsFormNotice
+                            type="info"
+                            text={
+                                __(
+                                    'Redirection will not work when a Payment Gateway is enabled for this form, as the Payment Gateway redirect takes priority.',
+                                    'cf7apps'
+                                )
+                            }
+                        />
+                    ) : null}
+
                     {
-                        Object.keys( appSettings.admin_settings['general']['fields'] ).map( fieldKey => {
-                            const field = appSettings.admin_settings['general']['fields'][ fieldKey ];
-                            const className =  undefined === field.class ? '' : field.class;
-                            const help = field.help;
-                            const placeholder = undefined === field.placeholder ? '' : field.placeholder;
+                        Object.keys(appSettings.admin_settings['general']['fields']).map(fieldKey => {
+                            const field = appSettings.admin_settings['general']['fields'][fieldKey];
 
-                            // Hide fields when webhook is not enabled (only for webhook app)
-                            if ( app === 'webhook' ) {
-                                const webhookEnabled = formData['is_enabled'];
-                                if ( !webhookEnabled && fieldKey !== 'notice' && fieldKey !== 'is_enabled' && field.type !== 'save_button' ) {
-                                    return null;
-                                }
+                            if (isWebhookSettings && fieldKey === 'data_type') {
+                                return null;
                             }
 
-                            // Hide fields when redirection is not enabled (only for redirection app)
-                            if ( app === 'cf7-redirection' ) {
-                                const redirectionEnabled = formData['enable_redirection'];
-                                if ( redirectionEnabled !== true && fieldKey !== 'notice' && fieldKey !== 'enable_redirection' && field.type !== 'save_button' ) {
-                                    return null;
-                                }
-                            }
-
-                            if ( 'title' === fieldKey ) {
+                            if (isWebhookSettings && fieldKey === 'method') {
+                                const fields = appSettings.admin_settings['general']['fields'];
                                 return (
-                                    <h3 key={fieldKey}>{ appSettings.admin_settings['general']['fields'].title }</h3>
-                                );
-                            } else if ( 'description' === fieldKey ) {
-                                return (
-                                    <p key={fieldKey} className={ 'cf7apps-help-text' }>
-                                        { appSettings.admin_settings['general']['fields'].description }
-                                    </p>
-                                );
-                            } else if ( 'notice' === field.type ) {
-                                return (
-                                    <CF7AppsNotice
-                                        key={fieldKey}
-                                        type={ className }
-                                        text={ field.text }
-                                    />
-                                );
-                            } else if ( 'text' === field.type ) {
-                                return (
-                                    <CF7AppsTextField
-                                        key={fieldKey}
-                                        label={ field.title }
-                                        description={ parse( String( field.description ) ) }
-                                        className={ className }
-                                        placeholder={ placeholder }
-                                        value={ formData[ fieldKey ] }
-                                        name={ fieldKey }
-                                        onChange={ handleInputChange }
-                                        required={ field.required }
-                                        disabled={ field.disabled }
-                                    />
-                                );
-                            } else if ( 'number' === field.type ) {
-                                return (
-                                    <CF7AppsNumberField
-                                        key={fieldKey}
-                                        label={ field.title }
-                                        description={ parse( String( field.description ) ) }
-                                        className={ className }
-                                        name={ fieldKey }
-                                        placeholder={ placeholder }
-                                        value={ formData[ fieldKey ] }
-                                        onChange={ handleInputChange }
-                                        disabled={ field.disabled }
-                                        min={ field.min }
-                                    />
-                                );
-                            } else if ( 'checkbox' === field.type ) {
-                                return (
-                                    <CF7AppsToggle
-                                        key={fieldKey}
-                                        help={ help }
-                                        label={ field.title }
-                                        className={ className }
-                                        isSelected={ formData[ fieldKey ] }
-                                        onChange={ ( e ) => {
-                                            setFormData( ( prevFormData ) => ( {
-                                                ...prevFormData,
-                                                [ fieldKey ]: ! prevFormData[ fieldKey ]
-                                            } ) );
-                                        } }
-                                        disabled={ field.disabled }
-                                    />
-                                );
-                            } else if ( 'select' === field.type ) {
-                                const isWebhookDataType = app === 'webhook' && fieldKey === 'data_type';
-                                const selectOptions = isWebhookDataType
-                                    ? getWebhookDataTypeOptions( formData.method, field.options )
-                                    : field.options;
-                                const selectedVal = formData[ fieldKey ] !== undefined && formData[ fieldKey ] !== null
-                                    ? formData[ fieldKey ]
-                                    : field.selected;
-                                return (
-                                    <CF7AppsSelectField
-                                        key={fieldKey}
-                                        label={ field.title }
-                                        className={ className }
-                                        name={ fieldKey }
-                                        selected={ selectedVal }
-                                        options={ selectOptions }
-                                        onChange={ handleInputChange }
-                                        description={ parse( String( field.description ) ) }
-                                        disabled={ field.disabled }
-                                    />
-                                )
-                            } else if ( 'textarea' === field.type ) {
-                                const isWebhookDisabled = app === 'webhook' && !formData['is_enabled'];
-                                return (
-                                    <TextareaField
-                                        key={ fieldKey }
-                                        fieldKey={ fieldKey }
-                                        field={ field }
-                                        className={ className }
-                                        description={ parse( String( field.description ) ) }
-                                        disabled={ field.disabled }
-                                        openMap={ openMap }
-                                        setOpenMap={ setOpenMap }
-                                        formData={ formData }
-                                        handleInputChange={ handleInputChange }
-                                        isWebhookDisabled={ isWebhookDisabled }
-                                    />
-                                )
-                            } else if ( 'save_button' === field.type ) {
-                                return (
-                                    <div key={fieldKey} className="cf7apps-form-group">
-                                        <Button
-                                            className="cf7apps-btn tertiary-primary"
-                                            onClick={ saveAppSettings }
-                                            isBusy={ isSaving }
-                                            disabled={ field.disabled }
-                                        >
-                                            { field.text }
-                                        </Button>
-                                    </div>
-                                )
-                            } else if ( 'template' === fieldKey ) {
-                                console.log( field )
-                            } else if ( 'radio' === field.type ) {
-
-                                const subKey = formData[ fieldKey ];
-                                const subField = field.sub_fields && field.sub_fields[ subKey ];
-                                subField['value'] = formData[ subKey ];
-                                return (
-                                    <div key={ fieldKey }>
-                                        <CF7AppsRadioField
-                                            label={ field.title }
-                                            className={ className }
-                                            options={ field.options }
-                                            name={ fieldKey }
-                                            onChange={ handleInputChange }
-                                            value={ formData[ fieldKey ] }
-                                            subFields={ subField }
-                                            disabled={ field.disabled }
-                                        />
+                                    <div key="webhook-method-row" className="cf7apps-webhook-method-row">
+                                        {renderSettingsField('method', fields.method)}
+                                        {renderSettingsField('data_type', fields.data_type)}
                                     </div>
                                 );
-
-                            } else {
-                              //  console.log( field )
                             }
-                        } )
+
+                            return renderSettingsField(fieldKey, field);
+                        })
                     }
                 </div>
             </div>
         );
     }
 
-    return (
-        ! isLoading && appSettings && appSettings.id === app
-        ?
-            <div className={ 'cf7apps-body' }>
-                <div className={ 'cf7apps-app-setting-header' }>
-                    <div className={ 'cf7apps-container' }>
-                        <h1>{ sprintf( __( '%s Settings', 'cf7apps' ), appSettings.title ) }</h1>
-                    </div>
-                </div>
+    const assetsBase = CF7AppsInternalSettings?.assetsURL || '';
+    const isRedirectionSettings = app === 'cf7-redirection';
+    const isEntriesSettings = app === 'cf7-entries';
+    const isWebhookSettings = app === 'webhook';
+    const isPaymentFormSettings = PAYMENT_FORM_APPS.includes(app);
+    const isAppSettingsShell = isRedirectionSettings || isEntriesSettings || isWebhookSettings;
+    const appSettingsPanelClass = isRedirectionSettings
+        ? ' cf7apps-redirection-settings'
+        : (isEntriesSettings ? ' cf7apps-entries-settings' : (isWebhookSettings ? ' cf7apps-webhook-settings' : (isPaymentFormSettings ? ` cf7apps-payment-settings${app === 'square' ? ' cf7apps-square-settings' : ''}` : '')));
+    const panelStyle =
+        appSettings && appSettings.id === app && !isAppSettingsShell
+            ? getFormEditorSettingsPanelStyle(appSettings, assetsBase)
+            : undefined;
 
-                <div className={ 'cf7apps-app-setting-section' }>
-                    <div className={ 'cf7apps-container' }>
-                        <div className={ 'cf7apps-settings-content-wrapper' }>
-                            <div className={ appSettings.is_enabled ? 'cf7apps-enabled-content' : 'cf7apps-disabled-content' }>
-                                { Settings() }
-                            </div>
-                            { ( appSettings.is_enabled !== true ) && (
-                                <CF7AppsDisabledOverlay 
-                                    appId={ appSettings.id } 
-                                    appTitle={ appSettings.title } 
-                                />
-                            ) }
+    const isUnsavedForm =
+        ! CF7AppsInternalSettings?.formID ||
+        Number( CF7AppsInternalSettings.formID ) <= 0;
+
+    return (
+        !isLoading && appSettings && appSettings.id === app
+            ?
+            <div
+                className={`cf7apps-form-settings-view cf7apps-app-${appSettings.id}${appSettingsPanelClass}`}
+                style={panelStyle}
+            >
+                {isAppSettingsShell || isPaymentFormSettings ? (
+                    <CF7AppsAppSettingsHeader
+                        appSettings={appSettings}
+                        assetsBase={assetsBase}
+                        showBack={false}
+                        title={
+                            isPaymentFormSettings
+                                ? getPaymentFormSettingsTitle( appSettings.id )
+                                : undefined
+                        }
+                        subtitle={
+                            isPaymentFormSettings
+                                ? __( 'Payment Form', 'cf7apps' )
+                                : undefined
+                        }
+                        showDescription={!isPaymentFormSettings}
+                    />
+                ) : (
+                    <FormSettingsHeader appSettings={appSettings} />
+                )}
+
+                <div className="cf7apps-form-settings-body">
+                    {isUnsavedForm && (
+                        <CF7AppsNotice
+                            type="warning"
+                            text={__(
+                                'Note: Save the Contact Form 7 form before configuring CF7 app settings. Settings can only be saved after the form has been created.',
+                                'cf7apps'
+                            )}
+                        />
+                    )}
+                    <div
+                        className={
+                            isPaymentFormSettings && appSettings.is_enabled !== true
+                                ? 'cf7apps-settings-content-wrapper cf7apps-settings-content-wrapper--payment-disabled'
+                                : 'cf7apps-settings-content-wrapper'
+                        }
+                    >
+                        <div className={appSettings.is_enabled ? 'cf7apps-enabled-content' : 'cf7apps-disabled-content'}>
+                            {Settings()}
                         </div>
+                        {(appSettings.is_enabled !== true) && (
+                            <CF7AppsDisabledOverlay
+                                appId={appSettings.id}
+                                appTitle={appSettings.title}
+                                showActivationMessage={ false }
+                            />
+                        )}
                     </div>
                 </div>
             </div>
-        :
-            <div className={ 'cf7apps-body-loading' }>
-                <CF7AppsSkeletonLoader height={ 800 } width={ '100%' } />
+            :
+            <div className="cf7apps-form-settings-view cf7apps-form-settings-view--loading">
+                <CF7AppsSkeletonLoader height={420} width="100%" />
             </div>
     );
 };

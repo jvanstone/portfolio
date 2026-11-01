@@ -1,0 +1,45 @@
+{
+    "name": "jasonvanstone/portfolio",
+    "description": "WordPress ddev project",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Jason Vanstone",
+            "email": "jason.vanstone.ca@gmail.com"
+        }
+    ],
+    "require": {
+        "composer/installers": "^2.2",
+        "timber/timber": "^2.5",
+        "wp-plugin/contact-form-7": "^6.2",
+        "wp-plugin/advanced-custom-fields": "^6.8",
+        "wp-plugin/contact-form-7-honeypot": "^3.9",
+        "wp-plugin/custom-post-type-ui": "^1.19",
+        "wp-plugin/flamingo": "^2.6",
+        "wp-plugin/litespeed-cache": "^7.9",
+        "wp-plugin/multilingual-contact-form-7-with-polylang": "^1.0",
+        "wp-plugin/polylang": "^3.9",
+        "wp-plugin/theme-translation-for-polylang": "^3.4",
+        "wp-plugin/wordpress-seo": "^28.8"
+    },
+    "config": {
+        "allow-plugins": {
+            "composer/installers": true
+        }
+    },
+    "extra": {
+      "wordpress-install-dir": ".",
+        "installer-paths": {
+            "wp-content/plugins/{$name}/": ["type:wordpress-plugin"],
+            "wp-content/themes/{$name}/": ["type:wordpress-theme"],
+            "wp-content/mu-plugins/{$name}/": ["type:wordpress-mu-plugin"]
+        }
+    },
+    "repositories": [
+        {
+            "name": "wp-packages",
+            "type": "composer",
+            "url": "https://repo.wp-packages.org"
+        }
+    ]
+}

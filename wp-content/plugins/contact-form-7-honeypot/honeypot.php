@@ -5,12 +5,91 @@
  * Description: Contact Form 7 Apps is a collection of useful modules and extensions for Contact Form 7.
  * Author: CF7 Apps
  * Author URI: https://cf7apps.com/
- * Version: 3.6.1
+ * Version: 3.9.0
+ * Requires at least: 6.7
+ * Requires PHP: 7.4
+ * Tested up to: 7.1.2
  * Text Domain: contact-form-7-honeypot
  * Domain Path: /languages/
  * Requires Plugins: contact-form-7
  */
 
+defined( 'ABSPATH' ) || exit;
+
+if ( ! function_exists( 'cf7apps_get_cf7_parent_menu_slug' ) ) {
+	/**
+	 * Contact Form 7 top-level admin menu slug.
+	 *
+	 * CF7 6.2+ renamed the parent from `wpcf7` to `wpcf7-dashboard`.
+	 *
+	 * @since 3.8.1
+	 *
+	 * @return string
+	 */
+	function cf7apps_get_cf7_parent_menu_slug() {
+		$version = defined( 'WPCF7_VERSION' ) ? WPCF7_VERSION : '';
+
+		if ( ! $version && defined( 'WP_PLUGIN_DIR' ) ) {
+			$cf7_main = WP_PLUGIN_DIR . '/contact-form-7/wp-contact-form-7.php';
+			if ( is_readable( $cf7_main ) ) {
+				$plugin_data = get_file_data( $cf7_main, array( 'Version' => 'Version' ), 'plugin' );
+				$version     = isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : '';
+			}
+		}
+
+		if ( $version && version_compare( $version, '6.2', '>=' ) ) {
+			return 'wpcf7-dashboard';
+		}
+
+		global $menu;
+		if ( is_array( $menu ) ) {
+			foreach ( $menu as $item ) {
+				if ( isset( $item[2] ) && 'wpcf7-dashboard' === $item[2] ) {
+					return 'wpcf7-dashboard';
+				}
+			}
+		}
+
+		return 'wpcf7';
+	}
+}
+
+if ( ! function_exists( 'cf7apps_map_free_plugin_dependency_slug' ) ) {
+	/**
+	 * Map the wp.org CF7 Apps slug to the installed plugin folder.
+	 *
+	 * Supports both `contact-form-7-honeypot` (wp.org) and
+	 * `honeypot-for-contact-form-7` (local development).
+	 *
+	 * @param string $slug Dependency slug from a Requires Plugins header.
+	 * @return string
+	 */
+	function cf7apps_map_free_plugin_dependency_slug( $slug ) {
+		if ( 'contact-form-7-honeypot' !== $slug ) {
+			return $slug;
+		}
+
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$basenames = array(
+			'contact-form-7-honeypot/honeypot.php',
+			'honeypot-for-contact-form-7/honeypot.php',
+		);
+
+		$plugins = get_plugins();
+		foreach ( $basenames as $basename ) {
+			if ( isset( $plugins[ $basename ] ) ) {
+				return dirname( $basename );
+			}
+		}
+
+		return $slug;
+	}
+
+	add_filter( 'wp_plugin_dependencies_slug', 'cf7apps_map_free_plugin_dependency_slug' );
+}
 
 /** 
  * Freemius initialization
@@ -32,14 +111,19 @@ if ( ! function_exists( 'cf7h_fs' ) ) {
                 'type'                => 'plugin',
                 'public_key'          => 'pk_ad07f3a314c2ac84f528f0a53268c',
                 'is_premium'          => false,
-                'has_addons'          => false,
+                'has_addons'          => true,
                 'has_paid_plans'      => false,
                 'menu'                => array(
                     'slug'           => 'cf7apps',
                     'first-path'     => 'admin.php?page=cf7apps',
+                    'parent'         => array(
+                        // CF7 6.2+ uses wpcf7-dashboard; older builds use wpcf7.
+                        'slug' => cf7apps_get_cf7_parent_menu_slug(),
+                    ),
                     'account'        => false,
                     'contact'        => false,
                     'support'        => false,
+                    'addons'         => false,
                 ),
             ) );
         }
@@ -56,7 +140,7 @@ if ( ! function_exists( 'cf7h_fs' ) ) {
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CF7APPS_VERSION', '3.6.1' );
+define( 'CF7APPS_VERSION', '3.9.0' );
 define( 'CF7APPS_PLUGIN', __FILE__ );
 define( 'CF7APPS_PLUGIN_BASENAME', plugin_basename( CF7APPS_PLUGIN ) );
 define( 'CF7APPS_PLUGIN_NAME', trim( dirname( CF7APPS_PLUGIN_BASENAME ), '/' ) );
@@ -97,3 +181,64 @@ function CF7Apps() {
 endif;
 
 CF7Apps();
+
+/**
+ * Load plugin translations.
+ *
+ * The plugin header uses `contact-form-7-honeypot`, while the React admin UI
+ * uses the `cf7apps` text domain. Load the same MO file for both domains.
+ *
+ * Prefer bundled plugin translations over stale copies in
+ * wp-content/languages/plugins/ so newly added strings ship with the plugin.
+ *
+ * @since 3.6.2
+ */
+function cf7apps_load_textdomain() {
+	$locale   = determine_locale();
+	$rel_path = dirname( CF7APPS_PLUGIN_BASENAME ) . '/languages';
+	$mofile   = CF7APPS_PLUGIN_DIR . '/languages/contact-form-7-honeypot-' . $locale . '.mo';
+
+	load_plugin_textdomain( 'contact-form-7-honeypot', false, $rel_path );
+
+	if ( ! is_readable( $mofile ) ) {
+		return;
+	}
+
+	// Reload bundled translations last so newer strings win over WP_LANG_DIR.
+	unload_textdomain( 'contact-form-7-honeypot' );
+	load_textdomain( 'contact-form-7-honeypot', $mofile );
+
+	unload_textdomain( 'cf7apps' );
+	load_textdomain( 'cf7apps', $mofile );
+}
+add_action( 'init', 'cf7apps_load_textdomain' );
+
+/**
+ * Prefer plugin-bundled translation files over outdated WP_LANG_DIR copies.
+ *
+ * @since 3.6.2
+ *
+ * @param string $file   Path to the translation file WordPress wants to load.
+ * @param string $domain Text domain.
+ * @param string $locale Locale code.
+ * @return string
+ */
+function cf7apps_prefer_bundled_translation_file( $file, $domain, $locale ) {
+	if ( 'contact-form-7-honeypot' !== $domain && 'cf7apps' !== $domain ) {
+		return $file;
+	}
+
+	$bundled_php = CF7APPS_PLUGIN_DIR . '/languages/contact-form-7-honeypot-' . $locale . '.l10n.php';
+	$bundled_mo  = CF7APPS_PLUGIN_DIR . '/languages/contact-form-7-honeypot-' . $locale . '.mo';
+
+	if ( is_string( $file ) && substr( $file, -9 ) === '.l10n.php' && is_readable( $bundled_php ) ) {
+		return $bundled_php;
+	}
+
+	if ( is_string( $file ) && substr( $file, -3 ) === '.mo' && is_readable( $bundled_mo ) ) {
+		return $bundled_mo;
+	}
+
+	return $file;
+}
+add_filter( 'load_translation_file', 'cf7apps_prefer_bundled_translation_file', 10, 3 );

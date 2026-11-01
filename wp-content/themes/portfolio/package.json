@@ -9,7 +9,10 @@
   "browserslist": [
     "last 5 versions"
   ],
-  "scripts": {},
+  "scripts": {
+    "build": "gulp",
+    "watch": "gulp watch"
+  },
   "keywords": [
     "wordpress",
     "twig"
@@ -21,14 +24,14 @@
     "@babel/preset-env": "^7.24.8",
     "autoprefixer": "^10.4.13",
     "babel-loader": "^9.1.3",
-    "browser-sync": "^2.27.11",
+    "browser-sync": "^3.0.4",
     "css-loader": "^7.1.2",
-    "gulp": "^4.0.2",
+    "gulp": "^5.0.1",
     "gulp-concat": "^2.6.1",
-    "gulp-eslint": "^6.0.0",
+    "gulp-eslint-new": "^1.9.0",
     "gulp-sass": "^5.1.0",
     "gulp-terser": "^2.1.0",
-    "postcss": "^8.4.21",
+    "postcss": "^8.5.19",
     "prettier": "^2.8.2",
     "sass": "^1.56.2",
     "slick-slider": "^1.8.2",
@@ -40,9 +43,7 @@
     "bootstrap": "^5.3.2",
     "gulp-autoprefixer": "^9.0.0",
     "gulp-clean-css": "^4.3.0",
-    "gulp-eslint-new": "^1.9.0",
     "jquery": "^3.7.1",
-    "path": "^0.12.7",
     "webpack-stream": "^7.0.0"
   }
 }

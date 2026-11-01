@@ -376,6 +376,17 @@ switch ( $action ) {
 						</td>
 					</tr>
 
+					<?php if ( user_can( $profile_user, 'upload_files' ) ) : ?>
+					<tr class="user-infinite-scrolling-wrap">
+						<th scope="row"><?php _e( 'Infinite Scrolling' ); ?></th>
+						<td>
+							<label for="infinite_scrolling"><input name="infinite_scrolling" type="checkbox" id="infinite_scrolling" value="false" <?php checked( 'false', $profile_user->infinite_scrolling ); ?> />
+								<?php _e( 'Disable infinite scrolling in the Media Library grid view' ); ?>
+							</label>
+						</td>
+					</tr>
+					<?php endif; ?>
+
 					<?php
 					$languages                = get_available_languages();
 					$can_install_translations = current_user_can( 'install_languages' ) && wp_can_install_language_pack();
@@ -546,7 +557,7 @@ switch ( $action ) {
 
 								?>
 								<?php foreach ( $public_display as $id => $item ) : ?>
-									<option <?php selected( $profile_user->display_name, $item ); ?>><?php echo $item; ?></option>
+									<option <?php selected( $profile_user->display_name, $item ); ?>><?php echo esc_html( $item ); ?></option>
 								<?php endforeach; ?>
 							</select>
 						</td>
@@ -779,7 +790,7 @@ switch ( $action ) {
 										<p class="description">
 											<?php
 											/* translators: %s: User's display name. */
-											printf( __( 'Log %s out of all locations.' ), $profile_user->display_name );
+											printf( __( 'Log %s out of all locations.' ), esc_html( $profile_user->display_name ) );
 											?>
 										</p>
 									</td>

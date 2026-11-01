@@ -1,6 +1,84 @@
-const headers =  {
-    'X-WP-Nonce': CF7Apps.nonce
-};
+import { getCf7AppsRuntime } from '../utils/appCardTheme';
+
+function getRestHeaders() {
+    const runtime = getCf7AppsRuntime();
+
+    return {
+        'X-WP-Nonce': runtime.nonce,
+        'Content-Type': 'application/json',
+    };
+}
+
+
+
+
+function getCf7AppsRestUrl( endpoint ) {
+    let base = getCf7AppsRuntime().restURL || '';
+    const isPlain = base.indexOf( 'rest_route=' ) !== -1;
+
+    if ( isPlain ) {
+        const [prefix, restParam] = base.split( 'rest_route=' );
+        let route = restParam || '/';
+        if ( ! route.startsWith( '/' ) ) {
+            route = '/' + route;
+        }
+        if ( ! route.endsWith( '/' ) ) {
+            route += '/';
+        }
+
+        return `${prefix}rest_route=${route}cf7apps/v1/${endpoint}`;
+    }
+
+    if ( ! base.endsWith( '/' ) ) {
+        base += '/';
+    }
+    return `${base}cf7apps/v1/${endpoint}`;
+}
+
+async function requestRecommendedEndpoint( endpoint, options ) {
+    const normalized = endpoint.replace( /^\/+/, '' );
+    const urls = [ getCf7AppsRestUrl( normalized ) ];
+
+    if ( ! normalized.endsWith( '/' ) ) {
+        urls.push( getCf7AppsRestUrl( `${normalized}/` ) );
+    }
+
+    const base = getCf7AppsRuntime().restURL || '';
+    if ( base.includes( '/wp-json' ) ) {
+        const plainBase = base.replace( /\/wp-json\/?$/, '/index.php?rest_route=/' );
+        urls.push( `${plainBase}cf7apps/v1/${normalized}` );
+        if ( ! normalized.endsWith( '/' ) ) {
+            urls.push( `${plainBase}cf7apps/v1/${normalized}/` );
+        }
+    }
+
+    let lastResponse = null;
+    let lastJson = null;
+
+    for ( const url of urls ) {
+        const response = await fetch( url, options );
+        let json = null;
+        try {
+            json = await response.json();
+        } catch ( e ) {
+            json = null;
+        }
+
+        if ( response.ok && json?.success ) {
+            return { response, json };
+        }
+
+        lastResponse = response;
+        lastJson = json;
+
+        const isNoRoute = response.status === 404 && json?.code === 'rest_no_route';
+        if ( ! isNoRoute ) {
+            break;
+        }
+    }
+
+    return { response: lastResponse, json: lastJson };
+}
 
 /**
  * Fetches the menu items from the server.
@@ -8,8 +86,8 @@ const headers =  {
  * @since 3.0.0
  */
 export async function getMenu() {
-    const response = await fetch(`${CF7Apps.restURL}cf7apps/v1/get-menu-items`, {
-        headers: headers
+    const response = await fetch(`${getCf7AppsRuntime().restURL}cf7apps/v1/get-menu-items`, {
+        headers: getRestHeaders(),
     });
 
     if (!response.ok) {
@@ -30,13 +108,13 @@ export async function getMenu() {
  */
 export async function getApps( id = '' ) {
     // Use REST route with optional /id param, e.g. .../get-apps or .../get-apps/123
-    let url = `${CF7Apps.restURL}cf7apps/v1/get-apps`;
+    let url = `${getCf7AppsRuntime().restURL}cf7apps/v1/get-apps`;
     if (id) {
         url += `/${encodeURIComponent(id)}`;
     }
 
     const response = await fetch(url, {
-        headers: headers,
+        headers: getRestHeaders(),
         method: 'GET'
     });
 
@@ -59,25 +137,33 @@ export async function getApps( id = '' ) {
  * 
  * @since 3.0.0
  */
-export async function saveSettings(id, app_settings) {
+export async function saveSettings( id, app_settings, extraPayload = {} ) {
+    const body = {
+        id,
+        app_settings,
+        ...extraPayload,
+    };
+
     const response = await fetch(
-        `${CF7Apps.restURL}cf7apps/v1/save-app-settings`, {
-            headers: headers,
+        `${getCf7AppsRuntime().restURL}cf7apps/v1/save-app-settings`, {
+            headers: getRestHeaders(),
             method: 'POST',
-            body: JSON.stringify({ 
-                id: id,
-                app_settings
-            })
+            body: JSON.stringify( body ),
         }
     );
 
-    if (!response.ok) {
+    let json = null;
+    try {
+        json = await response.json();
+    } catch ( e ) {
+        json = null;
+    }
+
+    if ( ! response.ok || ! json || ! json.success ) {
         return false;
     }
 
-    const json = await response.json();
-
-    return json.data;
+    return json.data ?? true;
 }
 
 /**
@@ -89,8 +175,8 @@ export async function saveSettings(id, app_settings) {
  */
 export async function getCF7Forms() {
     const response = await fetch(
-        `${CF7Apps.restURL}cf7apps/v1/get-cf7-forms`, {
-            headers: headers,
+        `${getCf7AppsRuntime().restURL}cf7apps/v1/get-cf7-forms`, {
+            headers: getRestHeaders(),
             method: 'GET'
         }
     );
@@ -113,8 +199,8 @@ export async function getCF7Forms() {
  */
 export async function hasMigrated() {
     const response = await fetch(
-        `${CF7Apps.restURL}cf7apps/v1/has-migrated`, {
-            headers: headers,
+        `${getCf7AppsRuntime().restURL}cf7apps/v1/has-migrated`, {
+            headers: getRestHeaders(),
             method: 'GET'
         }
     );
@@ -137,8 +223,8 @@ export async function hasMigrated() {
  */
 export async function migrate() {
     const response = await fetch(
-        `${CF7Apps.restURL}cf7apps/v1/migrate`, {
-            headers: headers,
+        `${getCf7AppsRuntime().restURL}cf7apps/v1/migrate`, {
+            headers: getRestHeaders(),
             method: 'POST'
         }
     );
@@ -160,13 +246,13 @@ export async function migrate() {
  */
 export async function getCF7Entries( { page = 1, perPage = 10, form_id = 0, search = '', start_date = 0, end_date = 0 } = {} ) {
 
-    const baseUrl   = `${CF7Apps.restURL}cf7apps/v1/get-cf7-entries`;
+    const baseUrl   = `${getCf7AppsRuntime().restURL}cf7apps/v1/get-cf7-entries`;
     const separator = baseUrl.includes( '?' ) ? '&' : '?';
     const url       = `${ baseUrl }${ separator }page=${ page }&per-page=${ perPage }&form-id=${ form_id }&search=${ search }&start-date=${ start_date }&end-date=${ end_date }`;
 
     const response = await fetch(
         url, {
-            headers: headers,
+            headers: getRestHeaders(),
             method: 'GET'
         }
     );
@@ -199,13 +285,13 @@ export async function deleteCF7Entries( entryIds = [] ) {
     // serialize the entry IDs to a query string
     const queryString = entryIds.map( id => `entry_ids[]=${ encodeURIComponent( id ) }` ).join( '&' );
 
-    const baseUrl   = `${CF7Apps.restURL}cf7apps/v1/delete-cf7-entries`;
+    const baseUrl   = `${getCf7AppsRuntime().restURL}cf7apps/v1/delete-cf7-entries`;
     const separator = baseUrl.includes( '?' ) ? '&' : '?';
     const url       = `${ baseUrl }${ separator }${ queryString }`;
 
     const response = await fetch(
         url, {
-            headers: headers,
+            headers: getRestHeaders(),
             method: 'GET',
     } );
 
@@ -225,8 +311,8 @@ export async function deleteCF7Entries( entryIds = [] ) {
  */
 export async function getAllCF7Forms() {
     const response = await fetch(
-        `${CF7Apps.restURL}cf7apps/v1/get-all-cf7-forms`, {
-            headers: headers,
+        `${getCf7AppsRuntime().restURL}cf7apps/v1/get-all-cf7-forms`, {
+            headers: getRestHeaders(),
             method: 'GET'
         }
     );
@@ -240,10 +326,156 @@ export async function getAllCF7Forms() {
     return json.data;
 }
 
+
+
+
+
+
+
+export async function exportCF7Entries( {
+    entryIds = [],
+    form_id = 0,
+    search = '',
+    start_date = '',
+    end_date = '',
+} = {} ) {
+    const url = `${ getCf7AppsRuntime().restURL }cf7apps/v1/export-cf7-entries`;
+
+    const response = await fetch( url, {
+        headers: {
+            ...getRestHeaders(),
+            'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify( {
+            entry_ids: entryIds,
+            form_id,
+            search,
+            start_date,
+            end_date,
+        } ),
+    } );
+
+    const json = await response.json().catch( () => ( {} ) );
+
+    if ( ! response.ok || ! json?.content ) {
+        return false;
+    }
+
+    const filename = json.filename || 'entries.csv';
+    const blob = new Blob( [ json.content ], { type: 'text/csv;charset=utf-8;' } );
+    const link = document.createElement( 'a' );
+    const objectUrl = URL.createObjectURL( blob );
+
+    link.href = objectUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild( link );
+    link.click();
+    document.body.removeChild( link );
+    URL.revokeObjectURL( objectUrl );
+
+    return true;
+}
+
+/**
+ * Fetches all CF7 forms from the server.
+ *
+ * @since 3.1.0
+ * @returns {Promise<*|boolean>}
+ */
+
+
+/**
+ * Delete payment logs.
+ *
+ * @since 3.5.0
+ * @param logIds Array of log IDs to delete.
+ * @returns {Promise<*|boolean>}
+ */
+
+
+export async function fetchDashboardOverview() {
+    const response = await fetch(
+        `${getCf7AppsRuntime().restURL}cf7apps/v1/dashboard-overview`, {
+            headers: getRestHeaders(),
+            method: 'GET',
+        }
+    );
+
+    if ( ! response.ok ) {
+        return {
+            total_entries: 0,
+            spam_detections: 0,
+        };
+    }
+
+    const json = await response.json();
+
+    return json.data || {
+        total_entries: 0,
+        spam_detections: 0,
+    };
+}
+
+export async function fetchDomainAuthentication( refresh = false ) {
+    let url = getCf7AppsRestUrl( 'domain-authentication' );
+
+    if ( refresh ) {
+        url += ( url.includes( '?' ) ? '&' : '?' ) + 'refresh=1';
+    }
+
+    const response = await fetch( url, {
+            headers: getRestHeaders(),
+            method: 'GET',
+        }
+    );
+
+    if ( ! response.ok ) {
+        return null;
+    }
+
+    const json = await response.json();
+
+    return json.data || null;
+}
+
+export async function getRecommendedPlugins() {
+    const { response, json } = await requestRecommendedEndpoint( 'recommended-plugins', {
+        headers: getRestHeaders(),
+        method: 'GET',
+    } );
+
+    if ( ! response?.ok || ! json?.success ) {
+        return false;
+    }
+
+    return json.data;
+}
+
+export async function installActivateRecommendedPlugin( slug ) {
+    const { response, json } = await requestRecommendedEndpoint(
+        'recommended-plugins/install-activate',
+        {
+            headers: getRestHeaders(),
+            method: 'POST',
+            body: JSON.stringify( { slug } ),
+        }
+    );
+
+    if ( ! response?.ok || ! json?.success ) {
+        return {
+            error: json?.data?.message || 'Request failed.',
+        };
+    }
+
+    return { data: json.data };
+}
+
 export async function fetchSpamCount() {
     const response = await fetch(
-        `${CF7Apps.restURL}cf7apps/v1/spam-count`, {
-            headers: headers,
+        `${getCf7AppsRuntime().restURL}cf7apps/v1/spam-count`, {
+            headers: getRestHeaders(),
             method: 'GET'
         }
     );

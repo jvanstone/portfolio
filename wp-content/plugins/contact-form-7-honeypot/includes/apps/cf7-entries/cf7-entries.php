@@ -30,18 +30,93 @@ if ( ! class_exists( 'CF7Apps_Entries_App' ) && class_exists( 'CF7Apps_App' ) ) 
 			$this->is_pro             = false;
 			$this->by_default_enabled = false;
 			$this->documentation_url  = 'https://cf7apps.com/docs/general/entries';
-			$this->parent_menu        = __( 'General', 'cf7apps' );
+			$this->parent_menu        = 'general';
 			$this->setting_tabs       = array(
 				'general' => __( 'General', 'cf7apps' ),
 				'entries' => __( 'Entries', 'cf7apps' ),
 			);
+			$this->setting_tabs = apply_filters( 'cf7apps_entries_setting_tabs', $this->setting_tabs );
 
 			include_once plugin_dir_path( __FILE__ ) . 'includes/cf7-form-entries.php';
 			add_action( 'admin_init', array( $this, 'create_table' ) );
 			add_action( 'wpcf7_mail_sent', array( $this, 'save_form_information' ), 10, 1 );
-			add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
+			add_action( 'admin_menu', array( $this, 'add_admin_menu' ), 20 );
 			// Automatically remove stored entries when a Contact Form 7 form is permanently deleted.
 			add_action( 'before_delete_post', array( $this, 'delete_entries_on_form_delete' ) );
+		}
+
+		/**
+		 * Get default Pro settings for the Entries feature.
+		 *
+		 * @since 3.7.3
+		 *
+		 * @return array
+		 */
+		public static function get_default_pro_settings() {
+			return array(
+				'auto_delete'         => array(
+					'enabled'          => false,
+					'forms_mode'       => 'all',
+					'form_ids'         => array(),
+					'retention_period' => '30',
+					'custom_date'      => '',
+				),
+				'export_entries'      => array(
+					'enabled' => false,
+					'formats' => array( 'csv' ),
+				),
+				'entries_restriction' => array(
+					'enabled'         => false,
+					'forms_mode'      => 'all',
+					'form_ids'        => array(),
+					'all_forms_limit' => '10',
+					'limits'          => array(),
+					'message'         => __( 'This form is no longer accepting submissions. The entry limit has been reached.', 'cf7apps' ),
+				),
+			);
+		}
+
+		/**
+		 * Read Entries Pro settings from the main app option.
+		 *
+		 * @since 3.7.3
+		 *
+		 * @return array
+		 */
+		public static function get_pro_settings() {
+			$settings = get_option( 'cf7apps_settings', array() );
+			$entry    = isset( $settings['cf7-entries'] ) && is_array( $settings['cf7-entries'] ) ? $settings['cf7-entries'] : array();
+			$defaults = self::get_default_pro_settings();
+			$pro_settings = array();
+
+			foreach ( $defaults as $section_key => $section_defaults ) {
+				$section_values               = isset( $entry[ $section_key ] ) && is_array( $entry[ $section_key ] ) ? $entry[ $section_key ] : array();
+				$pro_settings[ $section_key ] = array_merge( $section_defaults, $section_values );
+			}
+
+			return $pro_settings;
+		}
+
+		/**
+		 * Add Entries-specific Pro payload to the app settings response.
+		 *
+		 * @since 3.7.3
+		 *
+		 * @return array
+		 */
+		public function get_settings() {
+			$settings                         = parent::get_settings();
+			$settings['has_pro']              = cf7apps_has_pro();
+			$settings['entries_pro_settings'] = self::get_pro_settings();
+			$settings['entries_forms']        = cf7apps_get_entries_forms_options();
+			$settings['entries_pro_labels']   = array(
+				'upgrade_url' => 'https://cf7apps.com/pricing/',
+			);
+			$settings['tab_documentation_urls'] = array(
+				'payment_logs' => 'https://cf7apps.com/docs/payment-gateways/payment-logs/',
+			);
+
+			return $settings;
 		}
 
 		/**
@@ -99,6 +174,11 @@ if ( ! class_exists( 'CF7Apps_Entries_App' ) && class_exists( 'CF7Apps_App' ) ) 
 		 */
 		public function save_form_information( $form ) {
 			if ( ! $this->get_option( 'is_enabled' ) ) {
+				return;
+			}
+
+			// HFCF7-640: Preview Form must not create entries.
+			if ( function_exists( 'cf7apps_is_form_preview_request' ) && cf7apps_is_form_preview_request() ) {
 				return;
 			}
 
@@ -207,7 +287,15 @@ if ( ! class_exists( 'CF7Apps_Entries_App' ) && class_exists( 'CF7Apps_App' ) ) 
 		public function add_admin_menu() {
 			if ( $this->get_option( 'is_enabled' ) ) {
 				$rand = rand(1000, 9999);
-				add_submenu_page( 'wpcf7', __( 'Entries', 'cf7apps' ), __( 'Entries', 'cf7apps' ), 'manage_options', 'admin.php?page=cf7apps&tab=entries' . $rand . '#/settings/cf7-entries/2', null, 3 );
+				add_submenu_page(
+					function_exists( 'cf7apps_get_cf7_parent_menu_slug' ) ? cf7apps_get_cf7_parent_menu_slug() : 'wpcf7',
+					__( 'Entries', 'cf7apps' ),
+					__( 'Entries', 'cf7apps' ),
+					'manage_options',
+					'admin.php?page=cf7apps&tab=entries' . $rand . '#/settings/cf7-entries/2',
+					null,
+					3
+				);
 			}
 		}
 
@@ -240,46 +328,61 @@ if ( ! class_exists( 'CF7Apps_Entries_App' ) && class_exists( 'CF7Apps_App' ) ) 
 		}
 
 		/**
+		 * Delegate auto-delete cron scheduling to CF7 Apps Pro.
+		 *
+		 * @since 3.7.3
+		 * @return void
+		 */
+		public static function reschedule_auto_delete_event() {
+			if ( class_exists( 'CF7Apps_Pro_Entries' ) ) {
+				CF7Apps_Pro_Entries::reschedule_auto_delete_event();
+				return;
+			}
+
+			do_action( 'cf7apps_entries_pro_settings_saved' );
+		}
+
+		/**
 		 * Get the app settings.
 		 *
 		 * @since 3.1.0
 		 * @return array
 		 */
 		public function admin_settings() {
-			return array(
+			$settings = array(
 				'general' => array(
 					'fields' => array(
-						'general' => array(
+						'general'  => array(
 							'title'       => __( 'Entries Settings', 'cf7apps' ),
 							'description' => __( '', 'cf7apps' ),
-
-                            'notice'           => array(
-                                'type'  => 'notice',
-                                'class' => 'info',
+							'notice'      => array(
+								'type'  => 'notice',
+								'class' => 'info',
 								'text'  => sprintf(
 									__( 'Stuck? Check our Documentation on %s', 'cf7apps' ),
 									'<a href="https://cf7apps.com/docs/general/entries" target="_blank" rel="noopener noreferrer"><u>' . __( 'Entries', 'cf7apps' ) . '</u></a>'
 								),
-                            ),
-
-							'is_enabled'  => array(
-								'title' 	  => __( 'Show Entries', 'cf7apps' ),
-								'type'        => 'checkbox',
-								'default'     => false,
 							),
-
+							'is_enabled'    => array(
+								'title'   => __( 'Show Entries', 'cf7apps' ),
+								'type'    => 'checkbox',
+								'default' => false,
+							),
+							'template'      => 'cf7EntriesSettings',
 							'save_settings' => array(
 								'type'  => 'save_button',
 								'text'  => __( 'Save Settings', 'cf7apps' ),
 								'class' => 'button-primary',
 							),
 						),
-						'entries' => array(
-							'template' => 'cf7Entries',
+						'entries'  => array(
+							'template' => 'cf7EntriesTable',
 						),
 					),
 				),
 			);
+
+			return apply_filters( 'cf7apps_entries_admin_settings', $settings );
 		}
 	}
 

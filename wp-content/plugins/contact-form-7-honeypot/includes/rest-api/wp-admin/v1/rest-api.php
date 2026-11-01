@@ -81,6 +81,16 @@ class CF7Apps_Rest_API_WP_Admin_V1 extends CF7Apps_Base_Rest_API {
 
 		register_rest_route(
 			'cf7apps/v1',
+			'/export-cf7-entries',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'export_cf7_entries' ),
+				'permission_callback' => array( $this, 'authenticate' ),
+			)
+		);
+
+		register_rest_route(
+			'cf7apps/v1',
 			'/get-all-cf7-forms',
 			array(
 				'methods'             => 'GET',
@@ -96,6 +106,53 @@ class CF7Apps_Rest_API_WP_Admin_V1 extends CF7Apps_Base_Rest_API {
                 'methods'             => 'GET',
                 'callback'            => array( $this, 'get_spam_count' ),
                 'permission_callback' => array( $this, 'authenticate' ),
+            )
+        );
+
+        register_rest_route(
+            'cf7apps/v1',
+            '/recommended-plugins',
+            array(
+                'methods'             => 'GET',
+                'callback'            => array( $this, 'get_recommended_plugins' ),
+                'permission_callback' => array( $this, 'authenticate' ),
+            )
+        );
+
+        register_rest_route(
+            'cf7apps/v1',
+            '/recommended-plugins/install-activate',
+            array(
+                'methods'             => 'POST',
+                'callback'            => array( $this, 'install_activate_recommended_plugin' ),
+                'permission_callback' => array( $this, 'authenticate' ),
+            )
+        );
+
+        register_rest_route(
+            'cf7apps/v1',
+            '/dashboard-overview',
+            array(
+                'methods'             => 'GET',
+                'callback'            => array( $this, 'get_dashboard_overview' ),
+                'permission_callback' => array( $this, 'authenticate' ),
+            )
+        );
+
+        register_rest_route(
+            'cf7apps/v1',
+            '/domain-authentication',
+            array(
+                'methods'             => 'GET',
+                'callback'            => array( $this, 'get_domain_authentication' ),
+                'permission_callback' => array( $this, 'authenticate' ),
+                'args'                => array(
+                    'refresh' => array(
+                        'type'              => 'boolean',
+                        'default'           => false,
+                        'sanitize_callback' => 'rest_sanitize_boolean',
+                    ),
+                ),
             )
         );
     }
@@ -164,6 +221,8 @@ class CF7Apps_Rest_API_WP_Admin_V1 extends CF7Apps_Base_Rest_API {
         $apps               = array();
         $apps_with_priority = array();
 
+        $requested_app_instance = null;
+
         // First, collect all apps with their priorities
         foreach( $registered_apps as $key => $app ) {
             if( class_exists( $app ) ) {
@@ -173,26 +232,84 @@ class CF7Apps_Rest_API_WP_Admin_V1 extends CF7Apps_Base_Rest_API {
                     'priority'     => property_exists($app_instance, 'priority') ? $app_instance->priority : 999
                 );
 
-                // If specific ID is requested, return immediately
-                if( ! empty( $id ) && $app_instance->id == $id ) {
-                    if ( empty( $settings_for ) ) {
-                        wp_send_json_success( $app_instance->get_settings() );
-                    } else {
-                        if ( 'internal-settings' === $settings_for ) {
-                            if ( $app_instance instanceof CF7Apps_App ) {
-                                if ( $app_instance->has_internal_settings ) {
-                                    $form_id = $request->get_param( 'form-id' );
-                                    $internal_settings = $app_instance->get_internal_settings( $form_id );
-                                    
-                                    // Ensure is_enabled status is included for internal settings
-                                    $global_enabled = $app_instance->get_option( 'is_enabled' );
-                                    $internal_settings['is_enabled'] = $global_enabled;
-                                    
-                                    wp_send_json_success( $internal_settings );
-                                }
-                            }
+                // When a specific ID is requested, prefer the Pro app with internal settings.
+                if ( ! empty( $id ) && $app_instance->id === $id ) {
+                    if ( null === $requested_app_instance ) {
+                        $requested_app_instance = $app_instance;
+                    } elseif (
+                        $app_instance->is_pro
+                        && $app_instance->has_internal_settings
+                        && ( ! $requested_app_instance->is_pro || ! $requested_app_instance->has_internal_settings )
+                    ) {
+                        $requested_app_instance = $app_instance;
+                    } elseif (
+                        $app_instance->has_internal_settings
+                        && ! $requested_app_instance->has_internal_settings
+                    ) {
+                        $requested_app_instance = $app_instance;
+                    }
+                }
+            }
+        }
+
+        if ( ! empty( $id ) && null !== $requested_app_instance ) {
+            $app_instance = $requested_app_instance;
+
+            if ( empty( $settings_for ) ) {
+                wp_send_json_success( $app_instance->get_settings() );
+            }
+
+            if ( 'internal-settings' === $settings_for ) {
+                if ( $app_instance instanceof CF7Apps_App && $app_instance->has_internal_settings ) {
+                    $form_id           = $request->get_param( 'form-id' );
+                    $internal_settings = $app_instance->get_internal_settings( $form_id );
+
+                    if ( in_array( $app_instance->id, cf7apps_get_payment_gateway_ids(), true ) ) {
+                        $enabled_gateway = cf7apps_get_form_enabled_payment_gateway( absint( $form_id ) );
+                        $internal_settings['enabled_form_payment_gateway'] = $enabled_gateway;
+
+                        if ( $enabled_gateway && $enabled_gateway !== $app_instance->id ) {
+                            $internal_settings['enabled_form_payment_gateway_label'] = cf7apps_get_payment_gateway_label( $enabled_gateway );
                         }
                     }
+
+                    if ( 'cf7-redirection' === $app_instance->id ) {
+                        $enabled_gateway = cf7apps_get_form_enabled_payment_gateway( absint( $form_id ) );
+                        $internal_settings['enabled_form_payment_gateway'] = $enabled_gateway;
+
+                        if ( $enabled_gateway ) {
+                            $internal_settings['enabled_form_payment_gateway_label'] = cf7apps_get_payment_gateway_label( $enabled_gateway );
+                        }
+                    }
+
+                    if ( in_array( $app_instance->id, array( 'stripe', 'paypal' ), true ) ) {
+                        $internal_settings = cf7apps_apply_payment_form_currency_defaults(
+                            $internal_settings,
+                            $app_instance->id
+                        );
+                    }
+
+                    // Global gateway status drives the disabled overlay in the form editor.
+                    $global_enabled                           = $app_instance->get_option( 'is_enabled' );
+                    $internal_settings['is_enabled']          = $global_enabled;
+                    $internal_settings['global_is_enabled']   = $global_enabled;
+
+                    $form_settings = get_post_meta( absint( $form_id ), 'cf7apps_settings', true );
+                    if (
+                        is_array( $form_settings )
+                        && isset( $form_settings[ $app_instance->id ]['is_enabled'] )
+                    ) {
+                        $form_is_enabled = cf7apps_is_internal_setting_truthy(
+                            $form_settings[ $app_instance->id ]['is_enabled']
+                        );
+                        $internal_settings['form_is_enabled'] = $form_is_enabled;
+
+                        if ( isset( $internal_settings['admin_settings']['general']['fields']['is_enabled'] ) ) {
+                            $internal_settings['admin_settings']['general']['fields']['is_enabled']['checked'] = $form_is_enabled;
+                        }
+                    }
+
+                    wp_send_json_success( $internal_settings );
                 }
             }
         }
@@ -226,13 +343,62 @@ class CF7Apps_Rest_API_WP_Admin_V1 extends CF7Apps_Base_Rest_API {
             );
         }
 
+        $teaser_app_ids = array( 'stripe', 'paypal', 'square' );
+        if (
+            ! cf7apps_has_pro()
+            && isset( $settings['id'] )
+            && in_array( $settings['id'], $teaser_app_ids, true )
+        ) {
+            wp_send_json_error(
+                __( 'Upgrade to CF7 Apps Pro to use payment gateways.', 'cf7apps' ),
+                403
+            );
+        }
+
         $settings['app_settings'] = $this->sanitize_app_settings( $settings['app_settings'] );
+
+		if ( 'webhook' === ( $settings['id'] ?? '' ) && is_array( $settings['app_settings'] ) ) {
+			$settings['app_settings'] = $this->normalize_webhook_app_settings( $settings['app_settings'] );
+		}
+
+		if (
+			'cf7-entries' === ( $settings['id'] ?? '' )
+			&& ! empty( $settings['entries_pro_settings'] )
+			&& is_array( $settings['entries_pro_settings'] )
+			&& class_exists( 'CF7Apps_Pro_Entries' )
+		) {
+			$pro_result = CF7Apps_Pro_Entries::persist_entries_pro_settings( $settings['entries_pro_settings'] );
+			if ( is_wp_error( $pro_result ) ) {
+				wp_send_json_error( $pro_result->get_error_message(), 400 );
+			}
+		}
 
         $settings_for = isset( $settings['settings-for'] ) ? $settings['settings-for'] : '';
         if ( 'internal-settings' === $settings_for ) {
-            $response = cf7apps_save_internal_app_settings( $settings['id'], $settings['form_id'], $settings['app_settings'] );
+            $form_id = isset( $settings['form_id'] ) ? absint( $settings['form_id'] ) : 0;
+            if ( $form_id <= 0 ) {
+                wp_send_json_error(
+                    __( 'Note: Save the Contact Form 7 form before configuring CF7 app settings. Settings can only be saved after the form has been created.', 'cf7apps' ),
+                    400
+                );
+            }
+
+            $response = cf7apps_save_internal_app_settings( $settings['id'], $form_id, $settings['app_settings'] );
         } else {
             $response = cf7apps_save_app_settings( $settings['id'], $settings['app_settings'] );
+        }
+
+        if ( 'cf7-entries' === ( $settings['id'] ?? '' ) ) {
+            if ( class_exists( 'CF7Apps_Pro_Entries' ) ) {
+                // Pro REST save already ran; queue auto-delete after is_enabled is persisted.
+                $entries_pro = CF7Apps_Pro_Entries::get_pro_settings();
+                if ( ! empty( $entries_pro['auto_delete']['enabled'] ) ) {
+                    CF7Apps_Pro_Entries::schedule_deferred_auto_delete_run();
+                }
+                CF7Apps_Pro_Entries::reschedule_auto_delete_event();
+            } else {
+                do_action( 'cf7apps_entries_pro_settings_saved' );
+            }
         }
 
         if( $response ) {
@@ -390,8 +556,19 @@ class CF7Apps_Rest_API_WP_Admin_V1 extends CF7Apps_Base_Rest_API {
 			$entries       = CF7Apps_Form_Entries::get_all_entries( $per_page, $offset, $form_id, $search, $start_date, $end_date, array( 'orderby' => 'id', 'order' => 'DESC' ) );
 			$total_entries = CF7Apps_Form_Entries::get_total_entries( $form_id, $search, $start_date, $end_date );
 
-			if ( empty( $entries ) ) {
-				wp_send_json_error( 'No entries found.', 404 );
+			if ( class_exists( 'CF7Apps_Pro_Payment_Logs' ) && ! empty( $entries ) ) {
+				foreach ( $entries as $entry ) {
+					$payment = CF7Apps_Pro_Payment_Logs::get_by_entry_id( (int) $entry->id );
+					$entry->payment = array(
+						'is_gateway_enabled' => $this->is_any_payment_gateway_enabled_for_form( (int) $entry->form_id ),
+						'has_payment'        => ! empty( $payment ),
+						'payment_id'         => ! empty( $payment['id'] ) ? (int) $payment['id'] : 0,
+						'payment_method'     => ! empty( $payment['payment_method'] ) ? $payment['payment_method'] : '',
+						'payment_method_key' => ! empty( $payment['payment_method_key'] ) ? $payment['payment_method_key'] : '',
+						'order_id'           => ! empty( $payment['order_id'] ) ? $payment['order_id'] : '',
+						'details'            => ! empty( $payment ) ? $payment : null,
+					);
+				}
 			}
 		}
 
@@ -417,6 +594,223 @@ class CF7Apps_Rest_API_WP_Admin_V1 extends CF7Apps_Base_Rest_API {
 		CF7Apps_Form_Entries::delete_entries( $entry_ids );
 
 		wp_send_json_success( 'Entries deleted successfully.' );
+	}
+
+	/**
+	 * Export Contact Form 7 entries as CSV.
+	 *
+	 * @since 3.8.0
+	 * @param WP_REST_Request $request The REST request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function export_cf7_entries( $request ) {
+		if ( ! $this->is_entries_enabled() ) {
+			return new WP_Error(
+				'cf7apps_entries_disabled',
+				__( 'Entries is not enabled.', 'cf7apps' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		$params     = $request->get_json_params();
+		$entry_ids  = isset( $params['entry_ids'] ) ? (array) $params['entry_ids'] : array();
+		$form_id    = isset( $params['form_id'] ) ? absint( $params['form_id'] ) : 0;
+		$search     = isset( $params['search'] ) ? sanitize_text_field( (string) $params['search'] ) : '';
+		$start_date = isset( $params['start_date'] ) ? sanitize_text_field( (string) $params['start_date'] ) : '';
+		$end_date   = isset( $params['end_date'] ) ? sanitize_text_field( (string) $params['end_date'] ) : '';
+
+		$entry_ids = array_values( array_filter( array_map( 'absint', $entry_ids ) ) );
+
+		if ( ! empty( $entry_ids ) ) {
+			$entries = CF7Apps_Form_Entries::get_entries_by_ids( $entry_ids );
+		} else {
+			if ( ! empty( $start_date ) ) {
+				$start_date = strtotime( date( 'Y-m-d H:i:s', strtotime( $start_date . ' +1 day' ) ) );
+			}
+
+			if ( ! empty( $end_date ) ) {
+				$end_date = strtotime( date( 'Y-m-d H:i:s', strtotime( $end_date . ' +1 day' ) ) );
+			}
+
+			if ( ! empty( $start_date ) && ! empty( $end_date ) && $start_date === $end_date ) {
+				$end_date = strtotime( date( 'Y-m-d H:i:s', $end_date ) . ' +1 day' );
+			}
+
+			$entries = CF7Apps_Form_Entries::get_all_entries(
+				0,
+				0,
+				$form_id,
+				$search,
+				$start_date,
+				$end_date,
+				array(
+					'orderby' => 'id',
+					'order'   => 'DESC',
+				)
+			);
+		}
+
+		if ( empty( $entries ) ) {
+			return new WP_Error(
+				'cf7apps_no_entries',
+				__( 'No entries found to export.', 'cf7apps' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$csv      = CF7Apps_Form_Entries::entries_to_csv( $entries );
+		$filename = CF7Apps_Form_Entries::get_export_filename( $entries, $form_id );
+
+		return rest_ensure_response(
+			array(
+				'success'  => true,
+				'filename' => $filename,
+				'content'  => $csv,
+			)
+		);
+	}
+
+	/**
+	 * Get payment logs for entries tab.
+	 *
+	 * @since 3.5.0
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public function get_payment_logs( $request ) {
+		$page     = absint( $request->get_param( 'page' ) );
+		$per_page = absint( $request->get_param( 'per-page' ) );
+		$form_id         = absint( $request->get_param( 'form-id' ) );
+		$search          = sanitize_text_field( (string) $request->get_param( 'search' ) );
+		$payment_method  = sanitize_key( (string) $request->get_param( 'payment-method' ) );
+
+		if ( $page < 1 ) {
+			$page = 1;
+		}
+		if ( $per_page < 1 ) {
+			$per_page = 10;
+		}
+
+		$entries_enabled = $this->is_entries_enabled();
+		$has_gateway     = $this->is_any_payment_gateway_enabled_for_form( $form_id );
+		$filter_gateway  = ( $payment_method && 'all' !== $payment_method ) ? $payment_method : '';
+		$is_test_mode    = $this->is_any_gateway_in_test_mode( $filter_gateway );
+		$offset          = ( $page - 1 ) * $per_page;
+
+		if ( ! class_exists( 'CF7Apps_Pro_Payment_Logs' ) ) {
+			return rest_ensure_response(
+				array(
+					'success'      => true,
+					'data'         => array(),
+					'total'        => 0,
+					'entries_on'   => $entries_enabled,
+					'gateway_on'   => $has_gateway,
+					'is_test_mode' => $is_test_mode,
+				)
+			);
+		}
+
+		$logs  = CF7Apps_Pro_Payment_Logs::get_logs( $per_page, $offset, $form_id, $search, $payment_method );
+		$total = CF7Apps_Pro_Payment_Logs::get_total_logs( $form_id, $search, $payment_method );
+
+		return rest_ensure_response(
+			array(
+				'success'      => true,
+				'data'         => $logs,
+				'total'        => $total,
+				'entries_on'   => $entries_enabled,
+				'gateway_on'   => $has_gateway,
+				'is_test_mode' => $is_test_mode,
+			)
+		);
+	}
+
+	/**
+	 * Delete payment log entries.
+	 *
+	 * @since 3.5.0
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public function delete_payment_logs( $request ) {
+		$log_ids = $request->get_param( 'log_ids' );
+		if ( ! class_exists( 'CF7Apps_Pro_Payment_Logs' ) ) {
+			wp_send_json_success( __( 'Payment logs deleted successfully.', 'cf7apps' ) );
+		}
+
+		CF7Apps_Pro_Payment_Logs::delete_logs( $log_ids );
+		wp_send_json_success( __( 'Payment logs deleted successfully.', 'cf7apps' ) );
+	}
+
+	/**
+	 * Whether Entries app is enabled.
+	 *
+	 * @return bool
+	 */
+	private function is_entries_enabled() {
+		$settings = get_option( 'cf7apps_settings', array() );
+		return is_array( $settings ) && ! empty( $settings['cf7-entries']['is_enabled'] );
+	}
+
+	/**
+	 * Whether any globally-enabled payment gateway is running in test/sandbox mode.
+	 *
+	 * @param string $gateway Optional gateway slug (stripe, paypal, square) to scope the check.
+	 * @return bool
+	 */
+	private function is_any_gateway_in_test_mode( $gateway = '' ) {
+		$settings = get_option( 'cf7apps_settings', array() );
+		if ( ! is_array( $settings ) ) {
+			return false;
+		}
+
+		$gateways = array( 'stripe', 'paypal', 'square' );
+		if ( $gateway && in_array( $gateway, $gateways, true ) ) {
+			$gateways = array( $gateway );
+		}
+
+		foreach ( $gateways as $gateway_key ) {
+			if ( empty( $settings[ $gateway_key ]['is_enabled'] ) ) {
+				continue;
+			}
+			$mode = isset( $settings[ $gateway_key ]['environment_mode'] ) ? $settings[ $gateway_key ]['environment_mode'] : 'live';
+			if ( 'test' === $mode || 'sandbox' === $mode ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if any payment gateway is enabled globally and (optionally) for the form.
+	 *
+	 * @param int $form_id Form id.
+	 * @return bool
+	 */
+	private function is_any_payment_gateway_enabled_for_form( $form_id = 0 ) {
+		$settings = get_option( 'cf7apps_settings', array() );
+		if ( ! is_array( $settings ) ) {
+			return false;
+		}
+
+		$gateways = array( 'stripe', 'paypal', 'square' );
+		foreach ( $gateways as $gateway ) {
+			if ( empty( $settings[ $gateway ]['is_enabled'] ) ) {
+				continue;
+			}
+
+			if ( $form_id <= 0 ) {
+				return true;
+			}
+
+			$form_settings = get_post_meta( $form_id, 'cf7apps_settings', true );
+			if ( is_array( $form_settings ) && ! empty( $form_settings[ $gateway ]['is_enabled'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -473,6 +867,251 @@ class CF7Apps_Rest_API_WP_Admin_V1 extends CF7Apps_Base_Rest_API {
             )
         );
     }
+
+    /**
+     * Dashboard overview stats for sidebar cards.
+     *
+     * @since 3.9.0
+     * @return WP_REST_Response
+     */
+    public function get_dashboard_overview() {
+        if ( ! class_exists( 'CF7Apps_Domain_Authentication' ) ) {
+            return new WP_Error(
+                'cf7apps_missing_dependency',
+                __( 'Domain authentication module is unavailable.', 'cf7apps' ),
+                array( 'status' => 500 )
+            );
+        }
+
+        try {
+            return rest_ensure_response(
+                array(
+                    'success' => true,
+                    'data'    => CF7Apps_Domain_Authentication::get_overview_stats(),
+                )
+            );
+        } catch ( Throwable $e ) {
+            return new WP_Error(
+                'cf7apps_dashboard_overview_failed',
+                $e->getMessage(),
+                array( 'status' => 500 )
+            );
+        }
+    }
+
+    /**
+     * Domain authentication checks for sidebar card.
+     *
+     * @since 3.9.0
+     * @param WP_REST_Request $request Request.
+     * @return WP_REST_Response|WP_Error
+     */
+    public function get_domain_authentication( $request ) {
+        if ( ! class_exists( 'CF7Apps_Domain_Authentication' ) ) {
+            return rest_ensure_response(
+                array(
+                    'success' => true,
+                    'data'    => array(
+                        'domain'               => wp_parse_url( home_url(), PHP_URL_HOST ),
+                        'deliverability_score' => 0,
+                        'checks'               => array(),
+                    ),
+                )
+            );
+        }
+
+        $force_refresh = rest_sanitize_boolean( $request->get_param( 'refresh' ) );
+
+        try {
+            return rest_ensure_response(
+                array(
+                    'success' => true,
+                    'data'    => CF7Apps_Domain_Authentication::get_payload( $force_refresh ),
+                )
+            );
+        } catch ( Throwable $e ) {
+            // Keep the dashboard usable even if lookups fail hard.
+            return rest_ensure_response(
+                array(
+                    'success' => true,
+                    'data'    => array(
+                        'domain'               => wp_parse_url( home_url(), PHP_URL_HOST ),
+                        'deliverability_score' => 0,
+                        'checks'               => array(),
+                        'error'                => $e->getMessage(),
+                    ),
+                )
+            );
+        }
+    }
+
+    /**
+     * Recommended plugins for dashboard sidebar.
+     *
+     * @since 3.8.0
+     * @return void
+     */
+    public function get_recommended_plugins() {
+        wp_send_json_success( CF7Apps_Recommended_Plugins::get_payload() );
+    }
+
+    /**
+     * Install and activate a recommended plugin.
+     *
+     * @since 3.8.0
+     * @param WP_REST_Request $request Request.
+     * @return void
+     */
+    public function install_activate_recommended_plugin( $request ) {
+        $json = $request->get_json_params();
+        $slug = is_array( $json ) && ! empty( $json['slug'] ) ? sanitize_key( $json['slug'] ) : '';
+
+        if ( '' === $slug ) {
+            $slug = sanitize_key( (string) $request->get_param( 'slug' ) );
+        }
+
+        $result = CF7Apps_Recommended_Plugins::install_and_activate( $slug );
+
+        if ( is_wp_error( $result ) ) {
+            $status = $result->get_error_data();
+            $code   = is_array( $status ) && isset( $status['status'] ) ? (int) $status['status'] : 500;
+
+            wp_send_json_error(
+                array(
+                    'message' => $result->get_error_message(),
+                ),
+                $code
+            );
+        }
+
+        wp_send_json_success( $result );
+    }
+
+	/**
+	 * Strip Pro-only webhook settings for free installs and normalize Pro payload.
+	 *
+	 * @param array $app_settings Settings.
+	 * @return array
+	 */
+	private function normalize_webhook_app_settings( $app_settings ) {
+		if ( ! is_array( $app_settings ) ) {
+			return $app_settings;
+		}
+
+		$has_pro = function_exists( 'cf7apps_has_pro' ) && cf7apps_has_pro();
+		$allowed_methods = $has_pro
+			? array( 'POST', 'GET', 'PATCH', 'PUT', 'DELETE' )
+			: array( 'POST', 'GET' );
+
+		if ( isset( $app_settings['method'] ) ) {
+			$method = is_array( $app_settings['method'] )
+				? strtoupper( (string) ( $app_settings['method']['value'] ?? 'POST' ) )
+				: strtoupper( (string) $app_settings['method'] );
+			$app_settings['method'] = in_array( $method, $allowed_methods, true ) ? $method : 'POST';
+		}
+
+		if ( ! $has_pro ) {
+			unset(
+				$app_settings['selected_fields'],
+				$app_settings['selected_fields_mode'],
+				$app_settings['failure_notifications'],
+				$app_settings['webhooks'],
+				$app_settings['parameter_map'],
+				$app_settings['webhook_pro_settings'],
+				$app_settings['webhook_field_options'],
+				$app_settings['form_field_options'],
+				$app_settings['has_pro']
+			);
+			return $app_settings;
+		}
+
+		if ( isset( $app_settings['selected_fields'] ) ) {
+			$selected = is_array( $app_settings['selected_fields'] ) && isset( $app_settings['selected_fields']['value'] )
+				? $app_settings['selected_fields']['value']
+				: $app_settings['selected_fields'];
+			$app_settings['selected_fields'] = is_array( $selected )
+				? array_values( array_map( 'sanitize_text_field', $selected ) )
+				: array();
+		}
+
+		if ( isset( $app_settings['selected_fields_mode'] ) ) {
+			$mode = is_array( $app_settings['selected_fields_mode'] )
+				? (string) ( $app_settings['selected_fields_mode']['value'] ?? 'all' )
+				: (string) $app_settings['selected_fields_mode'];
+			$app_settings['selected_fields_mode'] = ( 'selected' === $mode ) ? 'selected' : 'all';
+		}
+
+		if ( isset( $app_settings['failure_notifications'] ) ) {
+			$app_settings['failure_notifications'] = is_array( $app_settings['failure_notifications'] )
+				? ! empty( $app_settings['failure_notifications']['value'] )
+				: ! empty( $app_settings['failure_notifications'] );
+		}
+
+		if ( isset( $app_settings['parameter_map'] ) && is_array( $app_settings['parameter_map'] ) ) {
+			$param_map = array();
+			$raw_map   = isset( $app_settings['parameter_map']['value'] ) ? $app_settings['parameter_map']['value'] : $app_settings['parameter_map'];
+			if ( is_array( $raw_map ) ) {
+				foreach ( $raw_map as $from => $to ) {
+					$param_map[ sanitize_text_field( (string) $from ) ] = sanitize_text_field( (string) $to );
+				}
+			}
+			$app_settings['parameter_map'] = $param_map;
+		}
+
+		if ( isset( $app_settings['webhooks'] ) ) {
+			$raw        = isset( $app_settings['webhooks']['value'] ) ? $app_settings['webhooks']['value'] : $app_settings['webhooks'];
+			$normalized = array();
+			if ( is_array( $raw ) ) {
+				foreach ( $raw as $webhook ) {
+					if ( ! is_array( $webhook ) ) {
+						continue;
+					}
+					$wh_method = strtoupper( (string) ( $webhook['method'] ?? 'POST' ) );
+					if ( ! in_array( $wh_method, $allowed_methods, true ) ) {
+						$wh_method = 'POST';
+					}
+					$selected = isset( $webhook['selected_fields'] ) && is_array( $webhook['selected_fields'] )
+						? array_values( array_map( 'sanitize_text_field', $webhook['selected_fields'] ) )
+						: array();
+					$param_map = array();
+					if ( ! empty( $webhook['parameter_map'] ) && is_array( $webhook['parameter_map'] ) ) {
+						foreach ( $webhook['parameter_map'] as $from => $to ) {
+							$param_map[ sanitize_text_field( (string) $from ) ] = sanitize_text_field( (string) $to );
+						}
+					}
+					$data_type = (string) ( $webhook['data_type'] ?? 'json' );
+					if ( ! in_array( $data_type, array( 'json', 'form' ), true ) ) {
+						$data_type = 'json';
+					}
+					$headers = $webhook['headers'] ?? '{"Content-Type":"application/json"}';
+					$payload = $webhook['payload'] ?? '{"form_id":"{{form_id}}","fields":{{fields}}}';
+					$normalized[] = array(
+						'id'                    => sanitize_text_field( (string) ( $webhook['id'] ?? wp_generate_uuid4() ) ),
+						'enabled'               => ! isset( $webhook['enabled'] ) || ! empty( $webhook['enabled'] ),
+						'webhook_url'           => esc_url_raw( (string) ( $webhook['webhook_url'] ?? '' ) ),
+						'method'                => $wh_method,
+						'data_type'             => $data_type,
+						'selected_fields'       => $selected,
+						'selected_fields_mode'  => ( isset( $webhook['selected_fields_mode'] ) && 'selected' === $webhook['selected_fields_mode'] ) ? 'selected' : 'all',
+						'parameter_map'         => $param_map,
+						'headers'               => is_string( $headers ) ? $headers : wp_json_encode( $headers ),
+						'payload'               => is_string( $payload ) ? $payload : wp_json_encode( $payload ),
+						'failure_notifications' => ! empty( $webhook['failure_notifications'] ),
+					);
+				}
+			}
+			$app_settings['webhooks'] = $normalized;
+		}
+
+		unset(
+			$app_settings['webhook_pro_settings'],
+			$app_settings['webhook_field_options'],
+			$app_settings['form_field_options'],
+			$app_settings['has_pro']
+		);
+
+		return $app_settings;
+	}
 }
 
 new CF7Apps_Rest_API_WP_Admin_V1();

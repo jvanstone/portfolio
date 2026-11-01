@@ -8,6 +8,7 @@
  * @subpackage  Timber
  * @since    Timber 0.1
  */
+use Timber\Timber;
 
 $context = Timber::context();
 Timber::render( 'partial/404.twig', $context );
