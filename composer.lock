@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6b44980359c7947780f4b5ff02c4676d",
+    "content-hash": "a4b23ca9fcef30a9282abe8fffffef0f",
     "packages": [
         {
             "name": "composer/installers",
@@ -622,6 +622,37 @@
                 "changelog": "https://wordpress.org/plugins/advanced-custom-fields/#developers",
                 "issues": "https://wordpress.org/support/plugin/advanced-custom-fields",
                 "source": "https://plugins.svn.wordpress.org/advanced-custom-fields"
+            },
+            "time": "2026-09-29T13:03:58+00:00",
+            "published-time": "2026-09-29T13:03:58+00:00"
+        },
+        {
+            "name": "wp-plugin/cf7-antispam",
+            "version": "0.7.6",
+            "source": {
+                "type": "svn",
+                "url": "https://plugins.svn.wordpress.org/cf7-antispam/",
+                "reference": "tags/0.7.6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://downloads.wordpress.org/plugin/cf7-antispam.0.7.6.zip"
+            },
+            "require": {
+                "composer/installers": "~1.0|~2.0"
+            },
+            "type": "wordpress-plugin",
+            "notification-url": "https://wp-packages.org/downloads",
+            "authors": [
+                {
+                    "name": "Erik"
+                }
+            ],
+            "description": "A trustworthy antispam plugin for Contact Form 7. Wave goodbye to spam and keep your inbox clean!",
+            "support": {
+                "changelog": "https://wordpress.org/plugins/cf7-antispam/#developers",
+                "issues": "https://wordpress.org/support/plugin/cf7-antispam",
+                "source": "https://plugins.svn.wordpress.org/cf7-antispam"
             },
             "time": "2026-09-29T13:03:58+00:00",
             "published-time": "2026-09-29T13:03:58+00:00"

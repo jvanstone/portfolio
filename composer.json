@@ -20,7 +20,8 @@
         "wp-plugin/multilingual-contact-form-7-with-polylang": "^1.0",
         "wp-plugin/polylang": "^3.9",
         "wp-plugin/theme-translation-for-polylang": "^3.4",
-        "wp-plugin/wordpress-seo": "^28.8"
+        "wp-plugin/wordpress-seo": "^28.8",
+        "wp-plugin/cf7-antispam": "^0.7.6"
     },
     "config": {
         "allow-plugins": {
