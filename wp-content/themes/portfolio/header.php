@@ -10,6 +10,7 @@
  * @subpackage  Timber
  * @since   Timber 0.1
  */
+use Timber\Timber;
 
 $GLOBALS['timberContext'] = Timber::context();
 ob_start();

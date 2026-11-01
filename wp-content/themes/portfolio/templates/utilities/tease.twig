@@ -7,7 +7,7 @@
 					<img src="{{post.thumbnail.src}}"/>
 				</div>
 			{% endif %}
-			<p class="card-text">{{post.preview.read_more('')}}</p>
+			<p class="card-text">{{post.excerpt.read_more('')}}</p>
 
 			<p class="mb-5"><a class="learn-more" href="{{post.link}}" target="_blank">{{ __('View More', portfolio) }}</a></p>
 	{% endblock %}

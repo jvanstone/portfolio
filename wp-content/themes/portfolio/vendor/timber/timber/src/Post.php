@@ -601,7 +601,7 @@ class Post extends CoreEntity implements DatedInterface, Setupable, Stringable
      */
     public function preview()
     {
-        Helper::deprecated('{{ post.preview }}', '{{ post.excerpt }}', '2.0.0');
+        Helper::deprecated('{{ post.excerpt }}', '{{ post.excerpt }}', '2.0.0');
         return new PostExcerpt($this);
     }
 

@@ -5,5 +5,6 @@
  * @package  WordPress
  * @subpackage  Timber
  */
+use Timber\Timber;
 
 Timber::render( array( 'partial/sidebar.twig' ), $data );
