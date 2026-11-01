@@ -5,7 +5,7 @@
  *
  * @package  WordPress
  * @subpackage  Timber
- * @since   Timber 0.1
+ * @since   Timber 2
  */
 use Timber\Timber;
 use Timber\Site;
