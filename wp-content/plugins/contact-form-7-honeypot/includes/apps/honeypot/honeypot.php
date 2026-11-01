@@ -17,13 +17,11 @@ class CF7Apps_Honeypot_App extends CF7Apps_App {
         $this->is_pro = false;
         $this->by_default_enabled = true;
         $this->documentation_url = 'https://cf7apps.com/docs/spam-protection/contact-form-7-honeypot/';
-        $this->parent_menu = __( 'Spam Protection', 'cf7apps' );
+        $this->parent_menu = 'spam-protection';
         $this->setting_tabs = array(
             'general'   => __( 'General', 'cf7apps' ),
             'forms'     => __( 'Forms', 'cf7apps' ),
         );
-
-        add_filter( 'register_post_type_args', array( $this, 'register_post_type_args' ), 10, 2 );
     }
     
     /**
@@ -42,6 +40,12 @@ class CF7Apps_Honeypot_App extends CF7Apps_App {
                             'title'         => __( 'Enable Honeypot App', 'cf7apps' ),
                             'type'          => 'checkbox',
                             'default'       => false,
+                        ),
+                        'enable_dynamic_honeypot' => array(
+                            'title'       => __( 'Enable Dynamic Honeypot', 'cf7apps' ),
+                            'type'        => 'checkbox',
+                            'default'     => false,
+                            'description' => __( 'Uses randomized field names and server-side tokens for stronger bot protection. Recommended for cached sites. When disabled, the classic static honeypot is used.', 'cf7apps' ),
                         ),
                         'store_value'  => array(
                             'title'         => __( 'Store Honeypot Value', 'cf7apps' ),
@@ -96,6 +100,13 @@ class CF7Apps_Honeypot_App extends CF7Apps_App {
                             'class'         => 'xs',
                             'min'           => 1,
                         ),
+                        'silent_spam_response' => array(
+                            'title'         => __( 'Silent Success for Blocked Bots', 'cf7apps' ),
+                            'description'   => __( 'When enabled, submissions blocked by the honeypot will receive a normal success response instead of a spam error. No email is sent, but bots are less likely to detect the honeypot.', 'cf7apps' ),
+                            'type'          => 'checkbox',
+                            'default'       => false,
+                            'help'          => __( 'Recommended for high-spam sites. Real users incorrectly blocked will also see a success message.', 'cf7apps' ),
+                        ),
                         'save_settings'  => array(
                             'type'          => 'save_button',
                             'text'          => __( 'Save Settings', 'cf7apps' ),
@@ -110,18 +121,6 @@ class CF7Apps_Honeypot_App extends CF7Apps_App {
         );
     }
 
-    /**
-     * Register Post Type Args | Filter Callback
-     * 
-     * @since 3.0.0
-     */
-    public function register_post_type_args( $args, $post_type ) {
-        if ( 'wpcf7_contact_form' === $post_type ) {
-            $args['show_in_rest'] = true;
-        }
-
-        return $args;
-    }
 }
 
 /**

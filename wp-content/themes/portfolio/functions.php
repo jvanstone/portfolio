@@ -7,28 +7,29 @@
  * @subpackage  Timber
  * @since   Timber 0.1
  */
+use Timber\Timber;
+use Timber\Site;
 
 /**
  * If you are installing Timber as a Composer dependency in your theme, you'll need this block
- * to load your dependencies and initialize Timber. If you are using Timber via the WordPress.org
- * plug-in, you can safely delete this block.
+ * to load your dependencies.
  */
 $composer_autoload = __DIR__ . '/vendor/autoload.php';
 if ( file_exists( $composer_autoload ) ) {
 	require_once $composer_autoload;
-	$timber = new Timber\Timber();
+	// Note: Timber 2.x initializes itself automatically when loaded!
 }
 
 /**
  * This ensures that Timber is loaded and available as a PHP class.
- * If not, it gives an error message to help direct developers on where to activate
+ * If not, it gives an error message to help direct developers.
  */
-if ( ! class_exists( 'Timber' ) ) {
+if ( ! class_exists( 'Timber\Timber' ) ) { // Updated for Timber 2.x namespace
 
 	add_action(
 		'admin_notices',
 		function() {
-			echo '<div class="error"><p>Timber not activated. Make sure you activate the plugin in <a href="' . esc_url( admin_url( 'plugins.php#timber' ) ) . '">' . esc_url( admin_url( 'plugins.php' ) ) . '</a></p></div>';
+			echo '<div class="error"><p>Timber dependencies not found. Make sure you run <code>ddev composer install</code> inside your theme folder.</p></div>';
 		}
 	);
 
@@ -43,21 +44,26 @@ if ( ! class_exists( 'Timber' ) ) {
 
 /**
  * Sets the directories (inside your theme) to find .twig files
+ * Updated for Timber 2.x syntax
  */
-Timber::$dirname = array( 'templates', 'views' );
+add_filter( 'timber/twig/environment/options', function( $options ) {
+    // Timber 2.x enables autoescape by default.
+    // Set this to false ONLY if your old 1.x templates rely on unescaped data.
+    $options['autoescape'] = false;
+    return $options;
+});
 
-/**
- * By default, Timber does NOT autoescape values. Want to enable Twig's autoescape?
- * No prob! Just set this value to true
- */
-Timber::$autoescape = false;
-
+// Set your template paths using the modern Timber 2.x hook
+add_filter( 'timber/locations', function( $paths ) {
+    $paths[] = [ get_stylesheet_directory() . '/templates', get_stylesheet_directory() . '/templates' ];
+    return $paths;
+});
 
 /**
  * We're going to configure our theme inside of a subclass of Timber\Site
  * You can move this to its own file and include here via php's include("MySite.php")
  */
-class Icarus extends Timber\Site {
+class Icarus extends Site {
 	/** Add timber support. */
 	public function __construct() {
 		add_action( 'after_setup_theme', array( $this, 'theme_supports' ) );
@@ -85,7 +91,7 @@ class Icarus extends Timber\Site {
 		include __DIR__ . '/inc/polylang-helpers.php';
 
 		$context['is_front_page'] = is_front_page();
-		
+
 		$context['sub_footer_section'] = get_field( 'sub_footer_section' );
 
 		$context['featured_posts'] = Timber::get_posts(
@@ -100,7 +106,7 @@ class Icarus extends Timber\Site {
 			)
 		);
 
-		$context['featured_projects'] = Timber::get_posts( 
+		$context['featured_projects'] = Timber::get_posts(
 			array(
 				'post_type'=> 'projects',
 				'posts_per_page' => 3,
@@ -120,19 +126,19 @@ class Icarus extends Timber\Site {
 			'home' => get_translated_link('home'),
 			'contact' => get_translated_link('contact'),
 		);
-		
+
 		// Set all nav menus in context.
 		foreach (array_keys(get_registered_nav_menus()) as $location) {
 			// Bail out if menu has no location.
 			if (!has_nav_menu($location)) {
 				continue;
 			}
-	
-			$menu = new Timber\Menu($location);
-		
+
+			$menu = Timber::get_menu($location);
+
 			$context[$location] = $menu;
 		}
-	
+
 		return $context;
 	}
 

@@ -35,13 +35,32 @@ class CF7Apps {
         // Check if Contact Form 7 is active
         if ( ! $this->is_contact_form_7_active() ) {
             add_action( 'admin_notices', array( $this, 'cf7_not_active_notice' ) );
-            deactivate_plugins( CF7APPS_PLUGIN );
+            // Never deactivate during the activation request — that races WP's
+            // activate flow and can leave menus/hooks unregistered.
+            add_action( 'admin_init', array( $this, 'maybe_deactivate_without_cf7' ) );
             return; // Don't initialize if CF7 is not active
         }
 
         $this->includes();
         $this->register_hooks();
         $this->add_actions();
+    }
+
+    /**
+     * Deactivate CF7 Apps when Contact Form 7 is missing (outside activation).
+     *
+     * @since 3.8.1
+     */
+    public function maybe_deactivate_without_cf7() {
+        if ( $this->is_contact_form_7_active() ) {
+            return;
+        }
+
+        if ( ! function_exists( 'deactivate_plugins' ) ) {
+            include_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        deactivate_plugins( CF7APPS_PLUGIN );
     }
 
     /**
@@ -87,6 +106,8 @@ class CF7Apps {
     public function includes() {
         require_once 'cf7apps-functions.php';
         require_once 'abstract/abstract-cf7apps-app.php';
+        require_once 'class-cf7apps-recommended-plugins.php';
+        require_once 'class-cf7apps-domain-authentication.php';
         require_once 'apps/cf7apps-init-apps.php';
         require_once 'rest-api/class-cf7apps-base-rest-api.php';
         require_once 'rest-api/wp-admin/v1/rest-api.php';
@@ -140,7 +161,8 @@ class CF7Apps {
      * @since 3.0.0
      */
     public function add_actions() {
-        add_action( 'admin_menu', array( $this, 'admin_menu' ) );
+        // Priority 20: after Contact Form 7 registers its parent menu (priority 9).
+        add_action( 'admin_menu', array( $this, 'admin_menu' ), 20 );
     }
 
     /**
@@ -150,7 +172,7 @@ class CF7Apps {
      */
     public function admin_menu() {
         $page_id = add_submenu_page(
-            'wpcf7',
+            cf7apps_get_cf7_parent_menu_slug(),
             'CF7 Apps',
             'CF7 Apps',
             'manage_options', 
@@ -186,16 +208,25 @@ class CF7Apps {
             )
         );
 
+        wp_set_script_translations(
+            'cf7apps-script',
+            'cf7apps',
+            CF7APPS_PLUGIN_DIR . '/languages'
+        );
+
         wp_localize_script(
             'cf7apps-script',
             'CF7Apps',
-            array(
-                'hasPro'        => true,
-                'restURL'       => rest_url(),
-                'nonce'         => wp_create_nonce( 'wp_rest' ),
-                'assetsURL'     => CF7APPS_PLUGIN_DIR_URL . '/assets',
-                'appIndexURL'   =>  admin_url( 'admin.php?page=cf7apps' ),
-                'pluginVersion' => CF7APPS_VERSION,
+            apply_filters(
+                'cf7apps_localize_script',
+                array(
+                    'hasPro'        => cf7apps_has_pro(),
+                    'restURL'       => rest_url(),
+                    'nonce'         => wp_create_nonce( 'wp_rest' ),
+                    'assetsURL'     => CF7APPS_PLUGIN_DIR_URL . '/assets',
+                    'appIndexURL'   => admin_url( 'admin.php?page=cf7apps' ),
+                    'pluginVersion' => CF7APPS_VERSION,
+                )
             )
         );
 
@@ -212,6 +243,15 @@ class CF7Apps {
             ),
             $asset['version']
         );
+
+        /**
+         * Fires after CF7 Apps dashboard assets are enqueued.
+         *
+         * Used by CF7 Apps Pro to attach its admin bundle after the free shell.
+         *
+         * @since 3.8.0
+         */
+        do_action( 'cf7apps_admin_assets_enqueued' );
     }
 
     /**

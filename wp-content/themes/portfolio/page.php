@@ -20,10 +20,11 @@
  * @subpackage  Timber
  * @since    Timber 0.1
  */
+use Timber\Timber;
 
 $context = Timber::context();
 
-$timber_post     = new Timber\Post();
+$timber_post = Timber::get_post();
 $context['post'] = $timber_post;
 
 $translations = pll_get_post_translations($timber_post->ID);

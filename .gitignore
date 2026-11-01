@@ -19,3 +19,4 @@
 /wp-config-sample.php
 /wp-config.php
 wp-content/.DS_Store
+/vendor/

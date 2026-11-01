@@ -18,3 +18,224 @@ form.tag-generator-panel[data-version="2"] .control-box input:invalid,
 form.tag-generator-panel[data-version="2"] .control-box textarea:invalid {
     background-color: #ffffff !important;
 }
+
+.cf7apps-preview-trigger-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Match native WP secondary buttons (e.g. Duplicate) — no custom colors. */
+.cf7apps-preview-trigger.button.button-secondary {
+    vertical-align: middle;
+}
+
+.cf7apps-preview-open {
+    overflow: hidden;
+}
+
+.cf7apps-preview-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(13, 33, 73, 0.5);
+}
+
+.cf7apps-preview-backdrop[hidden] {
+    display: none !important;
+}
+
+.cf7apps-preview-modal {
+    width: min(960px, 100%);
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.cf7apps-preview-modal__header,
+.cf7apps-preview-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #E3E6EA;
+}
+
+.cf7apps-preview-modal__footer {
+    justify-content: center;
+    border-top: 1px solid #E3E6EA;
+    border-bottom: none;
+}
+
+.cf7apps-preview-modal__title {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+    color: #0D2149;
+}
+
+.cf7apps-preview-modal__close {
+    width: 34px;
+    height: 34px;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #E3E6EA;
+    border-radius: 999px;
+    background: #F8FAFC;
+    color: #52606D;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.cf7apps-preview-modal__close:hover,
+.cf7apps-preview-modal__close:focus {
+    background: #EEF4F8;
+    border-color: #C9D5DF;
+    color: #1F2937;
+}
+
+.cf7apps-preview-modal__close-icon {
+    position: relative;
+    display: block;
+    width: 12px;
+    height: 12px;
+}
+
+.cf7apps-preview-modal__close-icon::before,
+.cf7apps-preview-modal__close-icon::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 1.5px;
+    border-radius: 999px;
+    background: currentColor;
+    transform-origin: center;
+}
+
+.cf7apps-preview-modal__close-icon::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.cf7apps-preview-modal__close-icon::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.cf7apps-preview-modal__body {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+    background: #F7FAFC;
+}
+
+.cf7apps-preview-modal__notice {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border: 1px solid #BEE3F8;
+    border-radius: 8px;
+    background: #EBF8FF;
+    color: #1A4F7A;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.cf7apps-preview-modal__notice[hidden] {
+    display: none !important;
+}
+
+.cf7apps-preview-modal__state {
+    color: #4A5568;
+    font-size: 14px;
+}
+
+.cf7apps-preview-modal__state.is-error {
+    color: #b42318;
+}
+
+.cf7apps-preview-modal__content {
+    color: #1F2937;
+}
+
+.cf7apps-preview-modal__iframe {
+    display: block;
+    width: 100%;
+    min-height: 620px;
+    border: 1px solid #E3E6EA;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.cf7apps-preview-modal__content .wpcf7 {
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.cf7apps-preview-modal__content form {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 10px;
+    border: 1px solid #E3E6EA;
+}
+
+.cf7apps-preview-modal__content .wpcf7-form-control-wrap,
+.cf7apps-preview-modal__content .wpcf7-form-control,
+.cf7apps-preview-modal__content input[type="text"],
+.cf7apps-preview-modal__content input[type="email"],
+.cf7apps-preview-modal__content input[type="url"],
+.cf7apps-preview-modal__content input[type="tel"],
+.cf7apps-preview-modal__content input[type="number"],
+.cf7apps-preview-modal__content select,
+.cf7apps-preview-modal__content textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.cf7apps-preview-modal__content textarea {
+    min-height: 140px;
+}
+
+.cf7apps-preview-modal__watermark {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #208AAE;
+    text-transform: uppercase;
+}
+
+.cf7apps-preview-modal__logo {
+    display: block;
+    width: 116px;
+    max-width: 100%;
+    height: auto;
+}
+
+.cf7apps-preview-modal__branding {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.cf7apps-preview-modal__branding-label {
+    color: #208AAE;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}

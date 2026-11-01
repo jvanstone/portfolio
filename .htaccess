@@ -3,7 +3,7 @@
 <IfModule mod_rewrite.c>
 RewriteEngine on
 RewriteRule litespeed/debug/.*\.log$ - [F,L]
-RewriteRule \.litespeed_conf\.dat - [F,L]
+RewriteRule (^|/)\.litespeed_conf\. - [F,L]
 </IfModule>
 <IfModule LiteSpeed>
 CacheLookup on
@@ -14,6 +14,18 @@ RewriteCond %{REQUEST_URI} /wp-admin/admin-ajax\.php
 RewriteCond %{QUERY_STRING} action=async_litespeed
 RewriteRule .* - [E=noabort:1]
 ### marker ASYNC end ###
+
+### marker REST AUTH start ###
+RewriteCond %{HTTP:Authorization} !^$
+RewriteCond %{REQUEST_URI} /wp\-json(?:/|$) [OR]
+RewriteCond %{QUERY_STRING} (^|&)rest_route=
+RewriteRule .* - [E=Cache-Control:no-cache]
+### marker REST AUTH end ###
+
+### marker POSTPASS start ###
+RewriteCond %{HTTP_COOKIE} (^|;\s*)wp-postpass_5fb0268aa1b4b88399aeaccd526d3816=
+RewriteRule .* - [E=Cache-Control:no-cache]
+### marker POSTPASS end ###
 
 ### marker DROPQS start ###
 CacheKeyModify -qs:fbclid

@@ -91,13 +91,9 @@ function honeypot4cf7_uninstall() {
 
 add_filter( 'plugin_action_links_'.CF7APPS_PLUGIN_BASENAME, 'honeypot4cf7_settings_link' );
 function honeypot4cf7_settings_link( $links ) {
-	$url = esc_url( add_query_arg(
-		'page',
-		'honeypot4cf7',
-		get_admin_url() . 'admin.php'
-	) );
-	
-	$settings_link = "<a href='$url'>" . __( 'Settings', 'contact-form-7-honeypot' ) . '</a>';
+	$url = esc_url( admin_url( 'admin.php?page=cf7apps' ) );
+
+	$settings_link = "<a href='$url'>" . __( 'Settings', 'cf7apps' ) . '</a>';
 	
 	array_push( $links, $settings_link );
 
@@ -137,10 +133,12 @@ function honeypot4cf7_get_config( $context = false ) {
             'nomessage'							=> $cf7apps_settings['honeypot']['accessibility_label'] == 1 ? array( 'true' ) : array( 'false' ),
             'timecheck_enabled'					=> $cf7apps_settings['honeypot']['enable_time_check'] == 1 ? array( 'true' ) : array( 'false' ),
             'timecheck_value'					=> $cf7apps_settings['honeypot']['time_check'],
+            'silent_spam_response'				=> ! empty( $cf7apps_settings['honeypot']['silent_spam_response'] ) ? 1 : 0,
             'honeypot_count'					=> empty( $cf7apps_settings['honeypot']['honeypot_count'] ) ? 0 : $cf7apps_settings['honeypot']['honeypot_count'],
             'honeypot_install_date'				=> empty( $cf7apps_settings['honeypot']['honeypot_install_date'] ) ? time() : $cf7apps_settings['honeypot']['honeypot_install_date'],
             'honeypot_cf7_req_msg_dismissed'	=> empty( $cf7apps_settings['honeypot']['honeypot_cf7_req_msg_dismissed'] ) ? 0 : $cf7apps_settings['honeypot']['honeypot_cf7_req_msg_dismissed'],
             'honeypot4cf7_version'				=> CF7APPS_VERSION,
+            'enable_dynamic_honeypot'			=> ! empty( $cf7apps_settings['honeypot']['enable_dynamic_honeypot'] ),
         );
     }
     else {	
@@ -153,10 +151,12 @@ function honeypot4cf7_get_config( $context = false ) {
             'nomessage'							=> ( 'reset' == $context || empty( $honeypot4cf7_config['nomessage'] ) ) ?  array( 'false' ) : $honeypot4cf7_config['nomessage'],
             'timecheck_enabled'					=> ( 'reset' == $context || empty( $honeypot4cf7_config['timecheck_enabled'] ) ) ?  array( 'false' ) : $honeypot4cf7_config['timecheck_enabled'],
             'timecheck_value'					=> ( 'reset' == $context || empty( $honeypot4cf7_config['timecheck_value'] ) ) ?  4 : $honeypot4cf7_config['timecheck_value'],
+            'silent_spam_response'				=> ( 'reset' == $context || empty( $honeypot4cf7_config['silent_spam_response'] ) ) ? 0 : (int) $honeypot4cf7_config['silent_spam_response'],
             'honeypot_count'					=> ( empty( $honeypot4cf7_config['honeypot_count'] ) ) ? 0 : $honeypot4cf7_config['honeypot_count'],
             'honeypot_install_date'				=> ( empty( $honeypot4cf7_config['honeypot_install_date'] ) ) ? time() : $honeypot4cf7_config['honeypot_install_date'],
             'honeypot_cf7_req_msg_dismissed'	=> ( 'reset' == $context || empty( $honeypot4cf7_config['honeypot_cf7_req_msg_dismissed'] ) ) ? 0 : $honeypot4cf7_config['honeypot_cf7_req_msg_dismissed'],
             'honeypot4cf7_version'				=> CF7APPS_VERSION,
+            'enable_dynamic_honeypot'			=> false,
         );
         
         update_option( 'honeypot4cf7_config', $honeypot4cf7_config );
@@ -172,10 +172,11 @@ function honeypot4cf7_get_config( $context = false ) {
 *
 *********** */
 
-add_action( 'admin_menu', 'honeypot4cf7_admin_menu' );
+add_action( 'admin_menu', 'honeypot4cf7_admin_menu', 20 );
 function honeypot4cf7_admin_menu() {
+	$parent = function_exists( 'cf7apps_get_cf7_parent_menu_slug' ) ? cf7apps_get_cf7_parent_menu_slug() : 'wpcf7';
 	add_submenu_page(
-		'wpcf7', 
+		$parent,
 		__('Honeypot for Contact Form 7', 'contact-form-7-honeypot'),
 		__('Honeypot', 'contact-form-7-honeypot'),
 		'manage_options','honeypot4cf7',
@@ -252,6 +253,8 @@ function honeypot4cf7_general_tab_content() {
                 'accessibility_label'		=> ( isset( $_POST['honeypot4cf7_nomessage'] ) ) ? 1 : 0,
                 'enable_time_check'			=> ( isset( $_POST['honeypot4cf7_timecheck_enabled'] ) ) ? 1 : 0,
                 'time_check'			    => ( isset( $_POST['honeypot4cf7_timecheck_value'] ) ) ? $_POST['honeypot4cf7_timecheck_value'] : 0,
+                'silent_spam_response'		=> ( isset( $_POST['honeypot4cf7_silent_spam_response'] ) ) ? 1 : 0,
+                'enable_dynamic_honeypot'   => ( isset( $_POST['honeypot4cf7_enable_dynamic_honeypot'] ) ) ? 1 : 0,
             );
             
             cf7apps_save_app_settings( 'honeypot', $honeypot4cf7_config_update );
@@ -271,6 +274,7 @@ function honeypot4cf7_general_tab_content() {
                 'nomessage'					=> ( isset( $_POST['honeypot4cf7_nomessage'] ) ) ? $_POST['honeypot4cf7_nomessage'] : array( 'false' ),
                 'timecheck_enabled'			=> ( isset( $_POST['honeypot4cf7_timecheck_enabled'] ) ) ? $_POST['honeypot4cf7_timecheck_enabled'] : array( 'false' ),
                 'timecheck_value'			=> ( isset( $_POST['honeypot4cf7_timecheck_value'] ) ) ? $_POST['honeypot4cf7_timecheck_value'] : 0,
+                'silent_spam_response'		=> ( isset( $_POST['honeypot4cf7_silent_spam_response'] ) ) ? 1 : 0,
             );
 
             $honeypot4cf7_config = array_replace( $honeypot4cf7_config, $honeypot4cf7_config_update );
@@ -300,6 +304,15 @@ function honeypot4cf7_general_tab_content() {
                         <td>
                             <input type="checkbox" name="honeypot4cf7_store" id="honeypot4cf7__store-honeypot" value="1" <?php checked( $honeypot4cf7_config['store_honeypot'], 1 ); ?>>
                         </td>
+                    </tr>
+                    <tr valign="top">
+                        <th><label for="honeypot4cf7__enable-dynamic-honeypot"><?php esc_html_e( 'Enable Dynamic Honeypot', 'contact-form-7-honeypot' ); ?></label></th>
+                        <td>
+                            <input type="checkbox" name="honeypot4cf7_enable_dynamic_honeypot" id="honeypot4cf7__enable-dynamic-honeypot" value="1" <?php checked( ! empty( $honeypot4cf7_config['enable_dynamic_honeypot'] ), true ); ?>>
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <td class="description" colspan="2"><?php esc_html_e( 'Uses randomized field names and server-side tokens for stronger bot protection. Recommended for cached sites. When disabled, the classic static honeypot is used.', 'contact-form-7-honeypot' ); ?></td>
                     </tr>
                     <tr valign="top">
                         <td class="description" colspan="2">
@@ -379,6 +392,18 @@ function honeypot4cf7_general_tab_content() {
                     </tr>
                     <tr valign="top">
                         <td class="description" colspan="2"><?php esc_html_e( 'If enabled, this will perform an additional check for spam bots using the time it takes to submit the form under the idea that bots submit forms faster than people. The value is set to 4 seconds by default, but adjust based on your needs. If you\'re not sure, leave this unchecked.', 'contact-form-7-honeypot' ); ?></td>
+                    </tr>
+
+                    <tr valign="top">
+                        <th><label for="honeypot4cf7__silent_spam_response"><?php esc_html_e( 'Silent Success for Blocked Bots', 'contact-form-7-honeypot' ); ?></label></th>
+                        <td>
+                            <input type="checkbox" name="honeypot4cf7_silent_spam_response" id="honeypot4cf7__silent_spam_response" value="1" <?php checked( ! empty( $honeypot4cf7_config['silent_spam_response'] ), true ); ?>>
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <td class="description" colspan="2">
+							<?php esc_html_e( 'When enabled, submissions blocked by the honeypot will receive a normal success response instead of a spam error. No email is sent, but bots are less likely to detect the honeypot. Recommended for high-spam sites. Real users incorrectly blocked will also see a success message.', 'contact-form-7-honeypot' ); ?>
+                        </td>
                     </tr>
                     </tbody>
                 </table>

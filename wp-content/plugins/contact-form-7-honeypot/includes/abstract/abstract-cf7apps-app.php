@@ -60,6 +60,13 @@ abstract class CF7Apps_App {
     public $is_pro = false;
 
     /**
+     * Show Beta tag on dashboard card.
+     *
+     * @since 3.8.0
+     */
+    public $is_beta = false;
+
+    /**
      * Is enabled by default
      * 
      * @since 3.0.0
@@ -79,6 +86,13 @@ abstract class CF7Apps_App {
      * @since 3.0.0
      */
     public $parent_menu = false;
+
+    /**
+     * Parent menu sort order in the admin sidebar (lower = higher).
+     *
+     * @since 3.8.0
+     */
+    public $parent_menu_order = 50;
 
     /**
      * Setting Tabs
@@ -112,6 +126,72 @@ abstract class CF7Apps_App {
      * @since 3.0.0
      */
     public $options = false;
+
+    /**
+     * Normalize saved checkbox/toggle values from mixed storage formats.
+     *
+     * @since 3.7.3
+     *
+     * @param mixed $value Saved setting value.
+     * @return bool
+     */
+    protected function is_setting_enabled( $value ) {
+        return true === $value || 1 === $value || '1' === $value;
+    }
+
+    /**
+     * Map a saved option value onto admin field props (value/checked/selected).
+     *
+     * Radio fields store string keys (e.g. external_url), not booleans.
+     *
+     * @since 3.8.1
+     *
+     * @param array $field       Field schema.
+     * @param mixed $saved_value Stored option value.
+     * @return array<string, mixed>
+     */
+    protected function map_saved_value_to_admin_field( array $field, $saved_value ) {
+        if ( ! isset( $field['type'] ) ) {
+            return array( 'value' => $saved_value );
+        }
+
+        switch ( $field['type'] ) {
+            case 'checkbox':
+                return array( 'checked' => $this->is_setting_enabled( $saved_value ) );
+            case 'radio':
+                return array( 'value' => is_scalar( $saved_value ) ? (string) $saved_value : '' );
+            case 'select':
+                return array( 'selected' => $saved_value );
+            default:
+                return array( 'value' => $saved_value );
+        }
+    }
+
+    /**
+     * Map field defaults onto admin field props.
+     *
+     * @since 3.8.1
+     *
+     * @param array $field  Field schema.
+     * @param array $_field Field config from admin_settings (includes default).
+     * @return array<string, mixed>
+     */
+    protected function map_default_to_admin_field( array $field, array $_field ) {
+        if ( ! isset( $field['type'] ) ) {
+            return array();
+        }
+
+        switch ( $field['type'] ) {
+            case 'checkbox':
+                return array( 'checked' => ( isset( $_field['default'] ) && $_field['default'] ) ? true : false );
+            case 'radio':
+                return array( 'value' => ( isset( $_field['default'] ) ) ? (string) $_field['default'] : '' );
+            case 'select':
+                return array( 'selected' => ( isset( $_field['default'] ) ) ? $_field['default'] : '' );
+            default:
+                return array( 'value' => ( isset( $_field['default'] ) ) ? $_field['default'] : '' );
+        }
+    }
 
     /**
      * Get Option
@@ -179,6 +259,7 @@ abstract class CF7Apps_App {
         $settings->icon = $this->icon;
         $settings->has_admin_settings = $this->has_admin_settings;
         $settings->is_pro = $this->is_pro;
+        $settings->is_beta = $this->is_beta;
         $settings->by_default_enabled = $this->by_default_enabled;
         $settings->documentation_url = $this->documentation_url;
         $settings->parent_menu = $this->parent_menu;
@@ -194,61 +275,49 @@ abstract class CF7Apps_App {
                         
                     foreach( $setting_fields as $field_key => $field ) {
                         if( array_key_exists( $field_key, $this->options[$this->id] ) ) {
-                            // If data is saved, set the value
-                            if ( ( $field['type'] == 'checkbox' || $field['type'] == 'radio' ) && $this->options[$this->id][$field_key] == '1' ) {
-                                $settings['admin_settings']['general']['fields'][$field_key]['checked'] = true;
-                            } 
-                            elseif ( $field['type'] == 'select' ) {
-                                $settings['admin_settings']['general']['fields'][$field_key]['selected'] = $this->options[$this->id][$field_key];
-                            } 
-                            else {
-                                $settings['admin_settings']['general']['fields'][$field_key]['value'] = $this->options[$this->id][$field_key];
-                            }
+                            $mapped = $this->map_saved_value_to_admin_field(
+                                $field,
+                                $this->options[ $this->id ][ $field_key ]
+                            );
+                            $settings['admin_settings']['general']['fields'][ $field_key ] = array_merge(
+                                $settings['admin_settings']['general']['fields'][ $field_key ],
+                                $mapped
+                            );
                         } else {
                             // Set default value
                             $_field = $settings['admin_settings']['general']['fields'][$field_key];
 
                             if( isset( $field['type'] ) ) {
-                                if ( $field['type'] == 'checkbox' ) {
-                                    $settings['admin_settings']['general']['fields'][$field_key]['checked'] = ( isset( $_field['default'] ) && $_field['default'] ) ? true : false;
-                                }
-                                elseif ( $field['type'] == 'select' ) {
-                                    $settings['admin_settings']['general']['fields'][$field_key]['selected'] = ( isset( $_field['default'] ) ) ? $_field['default'] : '';
-                                }
-                                else {
-                                    $settings['admin_settings']['general']['fields'][$field_key]['value'] = ( isset( $_field['default'] ) ) ? $_field['default'] : '';
-                                }
+                                $mapped = $this->map_default_to_admin_field( $field, $_field );
+                                $settings['admin_settings']['general']['fields'][ $field_key ] = array_merge(
+                                    $settings['admin_settings']['general']['fields'][ $field_key ],
+                                    $mapped
+                                );
                             }
                         }
 
                         if ( isset( $field['sub_fields'] ) ) {
                             foreach ( $field['sub_fields'] as $sub_field_key => $sub_field ) {
                                 if ( array_key_exists( $sub_field_key, $this->options[$this->id] ) ) {
-                                    // If data is saved, set the value
-                                    if ( ( $sub_field['type'] == 'checkbox' || $sub_field['type'] == 'radio' ) && $this->options[$this->id][$sub_field_key] == '1' ) {
-                                        $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['checked'] = true;
-                                    }
-                                    elseif ( $sub_field['type'] == 'select' ) {
-                                        $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['selected'] = $this->options[$this->id][$sub_field_key];
-                                    }
-                                    else {
-                                        $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['value'] = $this->options[$this->id][$sub_field_key];
-                                    }
+                                    $mapped = $this->map_saved_value_to_admin_field(
+                                        $sub_field,
+                                        $this->options[ $this->id ][ $sub_field_key ]
+                                    );
+                                    $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ] = array_merge(
+                                        $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ],
+                                        $mapped
+                                    );
                                 }
                                 else {
                                     // Set default value
                                     $_sub_field = $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key];
 
                                     if( isset( $sub_field['type'] ) ) {
-                                        if ( $sub_field['type'] == 'checkbox' || 'radio' === $sub_field['type'] ) {
-                                            $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['checked'] = ( isset( $_sub_field['default'] ) && $_sub_field['default'] ) ? true : false;
-                                        }
-                                        elseif ( $sub_field['type'] == 'select' ) {
-                                            $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['selected'] = ( isset( $_sub_field['default'] ) ) ? $_sub_field['default'] : '';
-                                        }
-                                        else {
-                                            $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['value'] = ( isset( $_sub_field['default'] ) ) ? $_sub_field['default'] : '';
-                                        }
+                                        $mapped = $this->map_default_to_admin_field( $sub_field, $_sub_field );
+                                        $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ] = array_merge(
+                                            $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ],
+                                            $mapped
+                                        );
                                     }
                                 }
                             }
@@ -258,39 +327,32 @@ abstract class CF7Apps_App {
                 else {
                     foreach( $this->setting_tabs as $tab_key => $tab_title ) {
                         $settings_tab_fields = $settings['admin_settings']['general']['fields'][$tab_key];
-
-                        // Templates are managed in React
-                        if( array_key_exists( 'template', $settings_tab_fields ) ) {
-                            continue;
-                        }
                         
                         foreach( $settings_tab_fields as $field_key => $field ) {
+                            if ( 'template' === $field_key || ! is_array( $field ) || ! isset( $field['type'] ) ) {
+                                continue;
+                            }
+
                             if( array_key_exists( $field_key, $this->options[$this->id] ) ) {
-                                // If data is saved, set the value
-                                if ( ( $field['type'] == 'checkbox' || $field['type'] == 'radio' ) && $this->options[$this->id][$field_key] == '1' ) {
-                                    $settings['admin_settings']['general']['fields'][$tab_key][$field_key]['checked'] = true;
-                                } 
-                                elseif ( $field['type'] == 'select' ) {
-                                    $settings['admin_settings']['general']['fields'][$tab_key][$field_key]['selected'] = $this->options[$this->id][$field_key];
-                                } 
-                                else {
-                                    $settings['admin_settings']['general']['fields'][$tab_key][$field_key]['value'] = $this->options[$this->id][$field_key];
-                                }
+                                $mapped = $this->map_saved_value_to_admin_field(
+                                    $field,
+                                    $this->options[ $this->id ][ $field_key ]
+                                );
+                                $settings['admin_settings']['general']['fields'][ $tab_key ][ $field_key ] = array_merge(
+                                    $settings['admin_settings']['general']['fields'][ $tab_key ][ $field_key ],
+                                    $mapped
+                                );
                             }
                             else {
                                 // Set default value
                                 $_field = $settings['admin_settings']['general']['fields'][$tab_key][$field_key];
 
                                 if( isset( $field['type'] ) ) {
-                                    if ( $field['type'] == 'checkbox' || 'radio' === $field['type'] ) {
-                                        $settings['admin_settings']['general']['fields'][$tab_key][$field_key]['checked'] = ( isset( $_field['default'] ) && $_field['default'] ) ? true : false;
-                                    }
-                                    elseif ( $field['type'] == 'select' ) {
-                                        $settings['admin_settings']['general']['fields'][$tab_key][$field_key]['selected'] = ( isset( $_field['default'] ) ) ? $_field['default'] : '';
-                                    }
-                                    else {
-                                        $settings['admin_settings']['general']['fields'][$tab_key][$field_key]['value'] = ( isset( $_field['default'] ) ) ? $_field['default'] : '';
-                                    }
+                                    $mapped = $this->map_default_to_admin_field( $field, $_field );
+                                    $settings['admin_settings']['general']['fields'][ $tab_key ][ $field_key ] = array_merge(
+                                        $settings['admin_settings']['general']['fields'][ $tab_key ][ $field_key ],
+                                        $mapped
+                                    );
                                 }
                             }
                         }
@@ -330,6 +392,7 @@ abstract class CF7Apps_App {
         $settings->icon = $this->icon;
         $settings->has_internal_settings = $this->has_internal_settings;
         $settings->is_pro = $this->is_pro;
+        $settings->is_beta = $this->is_beta;
         $settings->by_default_enabled = $this->by_default_enabled;
         $settings->documentation_url = $this->documentation_url;
         $settings->parent_menu = $this->parent_menu;
@@ -338,61 +401,67 @@ abstract class CF7Apps_App {
 
         if ( $this->has_internal_settings ) {
             $settings['admin_settings'] = $this->internal_settings();
-            if ( isset( $this->options[ $this->id ] ) ) {
-                $setting_fields = $settings['admin_settings']['general']['fields'];
+            $setting_fields             = $settings['admin_settings']['general']['fields'];
+            $saved_app_settings         = ( isset( $this->options[ $this->id ] ) && is_array( $this->options[ $this->id ] ) )
+                ? $this->options[ $this->id ]
+                : array();
 
-                foreach ( $setting_fields as $field_key => $field ) {
-                    if ( array_key_exists( $field_key, $this->options[ $this->id ] ) ) {
-                        if ( $field['type'] == 'checkbox' ) {
-                            // Explicitly set checked to true or false based on saved value
-                            $settings['admin_settings']['general']['fields'][ $field_key ]['checked'] = ( $this->options[ $this->id ][ $field_key ] == '1' || $this->options[ $this->id ][ $field_key ] === true || $this->options[ $this->id ][ $field_key ] === 1 );
-                        } elseif ( $field['type'] == 'select' ) {
-                            $settings['admin_settings']['general']['fields'][ $field_key ]['selected'] = $this->options[ $this->id ][ $field_key ];
-                        } else {
-                            $settings['admin_settings']['general']['fields'][ $field_key ]['value'] = $this->options[ $this->id ][ $field_key ];
-                        }
+            foreach ( $setting_fields as $field_key => $field ) {
+                if ( 'template' === $field_key || ! is_array( $field ) || ! isset( $field['type'] ) ) {
+                    continue;
+                }
+
+                if ( array_key_exists( $field_key, $saved_app_settings ) ) {
+                    if ( 'checkbox' === $field['type'] ) {
+                        $settings['admin_settings']['general']['fields'][ $field_key ]['checked'] = cf7apps_is_internal_setting_truthy( $saved_app_settings[ $field_key ] );
+                    } elseif ( 'radio' === $field['type'] ) {
+                        $saved = $saved_app_settings[ $field_key ];
+                        $settings['admin_settings']['general']['fields'][ $field_key ]['value'] = is_scalar( $saved ) ? (string) $saved : '';
+                    } elseif ( 'select' === $field['type'] ) {
+                        $settings['admin_settings']['general']['fields'][ $field_key ]['selected'] = $saved_app_settings[ $field_key ];
                     } else {
-                        $_field = $settings['admin_settings']['general']['fields'][ $field_key ];
-                        if( isset( $field['type'] ) ) {
-                            if ( $field['type'] == 'checkbox' ) {
-                                $settings['admin_settings']['general']['fields'][ $field_key ]['checked'] = ( isset( $_field['default'] ) && $_field['default'] ) ? true : false;
-                            } elseif ( $field['type'] == 'select' ) {
-                                $settings['admin_settings']['general']['fields'][ $field_key ]['selected'] = ( isset( $_field['default'] ) ) ? $_field['default'] : '';
-                            } else {
-                                $settings['admin_settings']['general']['fields'][ $field_key ]['value'] = ( isset( $_field['default'] ) ) ? $_field['default'] : '';
-                            }
+                        $settings['admin_settings']['general']['fields'][ $field_key ]['value'] = $saved_app_settings[ $field_key ];
+                    }
+                } else {
+                    $_field = $settings['admin_settings']['general']['fields'][ $field_key ];
+                    if ( isset( $field['type'] ) ) {
+                        if ( 'checkbox' === $field['type'] ) {
+                            $settings['admin_settings']['general']['fields'][ $field_key ]['checked'] = ( isset( $_field['default'] ) && $_field['default'] ) ? true : false;
+                        } elseif ( 'radio' === $field['type'] ) {
+                            $settings['admin_settings']['general']['fields'][ $field_key ]['value'] = ( isset( $_field['default'] ) ) ? (string) $_field['default'] : '';
+                        } elseif ( 'select' === $field['type'] ) {
+                            $settings['admin_settings']['general']['fields'][ $field_key ]['selected'] = ( isset( $_field['default'] ) ) ? $_field['default'] : '';
+                        } else {
+                            $settings['admin_settings']['general']['fields'][ $field_key ]['value'] = ( isset( $_field['default'] ) ) ? $_field['default'] : '';
                         }
                     }
+                }
 
-                    if ( isset( $field['sub_fields'] ) ) {
-                        foreach ( $field['sub_fields'] as $sub_field_key => $sub_field ) {
-                            if ( array_key_exists( $sub_field_key, $this->options[$this->id] ) ) {
-                                // If data is saved, set the value
-                                if ( $sub_field['type'] == 'checkbox' || $sub_field['type'] == 'radio' ) {
-                                    // Explicitly set checked to true or false based on saved value
-                                    $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['checked'] = ( $this->options[$this->id][$sub_field_key] == '1' || $this->options[$this->id][$sub_field_key] === true || $this->options[$this->id][$sub_field_key] === 1 );
-                                }
-                                elseif ( $sub_field['type'] == 'select' ) {
-                                    $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['selected'] = $this->options[$this->id][$sub_field_key];
-                                }
-                                else {
-                                    $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['value'] = $this->options[$this->id][$sub_field_key];
-                                }
+                if ( isset( $field['sub_fields'] ) ) {
+                    foreach ( $field['sub_fields'] as $sub_field_key => $sub_field ) {
+                        if ( array_key_exists( $sub_field_key, $saved_app_settings ) ) {
+                            if ( 'checkbox' === $sub_field['type'] ) {
+                                $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ]['checked'] = cf7apps_is_internal_setting_truthy( $saved_app_settings[ $sub_field_key ] );
+                            } elseif ( 'radio' === $sub_field['type'] ) {
+                                $saved = $saved_app_settings[ $sub_field_key ];
+                                $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ]['value'] = is_scalar( $saved ) ? (string) $saved : '';
+                            } elseif ( 'select' === $sub_field['type'] ) {
+                                $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ]['selected'] = $saved_app_settings[ $sub_field_key ];
+                            } else {
+                                $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ]['value'] = $saved_app_settings[ $sub_field_key ];
                             }
-                            else {
-                                // Set default value
-                                $_sub_field = $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key];
+                        } else {
+                            $_sub_field = $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ];
 
-                                if( isset( $sub_field['type'] ) ) {
-                                    if ( $sub_field['type'] == 'checkbox' || 'radio' === $sub_field['type'] ) {
-                                        $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['checked'] = ( isset( $_sub_field['default'] ) && $_sub_field['default'] ) ? true : false;
-                                    }
-                                    elseif ( $sub_field['type'] == 'select' ) {
-                                        $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['selected'] = ( isset( $_sub_field['default'] ) ) ? $_sub_field['default'] : '';
-                                    }
-                                    else {
-                                        $settings['admin_settings']['general']['fields'][$field_key]['sub_fields'][$sub_field_key]['value'] = ( isset( $_sub_field['default'] ) ) ? $_sub_field['default'] : '';
-                                    }
+                            if ( isset( $sub_field['type'] ) ) {
+                                if ( 'checkbox' === $sub_field['type'] ) {
+                                    $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ]['checked'] = ( isset( $_sub_field['default'] ) && $_sub_field['default'] ) ? true : false;
+                                } elseif ( 'radio' === $sub_field['type'] ) {
+                                    $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ]['value'] = ( isset( $_sub_field['default'] ) ) ? (string) $_sub_field['default'] : '';
+                                } elseif ( 'select' === $sub_field['type'] ) {
+                                    $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ]['selected'] = ( isset( $_sub_field['default'] ) ) ? $_sub_field['default'] : '';
+                                } else {
+                                    $settings['admin_settings']['general']['fields'][ $field_key ]['sub_fields'][ $sub_field_key ]['value'] = ( isset( $_sub_field['default'] ) ) ? $_sub_field['default'] : '';
                                 }
                             }
                         }

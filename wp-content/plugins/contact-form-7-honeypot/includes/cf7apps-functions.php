@@ -10,6 +10,8 @@
  */
 if( ! function_exists( 'cf7apps_save_app_settings' ) ):
 function cf7apps_save_app_settings( $id, $settings ) {
+    $settings = apply_filters( 'cf7apps_pre_save_app_settings', $settings, $id );
+
     $existing_settings = get_option( 'cf7apps_settings', false );
 
     if( $existing_settings ) {
@@ -33,6 +35,112 @@ function cf7apps_save_app_settings( $id, $settings ) {
 endif;
 
 /**
+ * Week key (Monday Y-m-d, site timezone) for honeypot spam buckets.
+ *
+ * @since 3.9.0
+ *
+ * @param int|null $timestamp Unix timestamp.
+ * @return string
+ */
+if ( ! function_exists( 'cf7apps_get_honeypot_spam_week_key' ) ) :
+function cf7apps_get_honeypot_spam_week_key( $timestamp = null ) {
+    $timezone = wp_timezone();
+    $date     = new DateTime( 'now', $timezone );
+
+    if ( null !== $timestamp ) {
+        $date->setTimestamp( (int) $timestamp );
+    }
+
+    if ( '1' !== $date->format( 'N' ) ) {
+        $date->modify( 'monday this week' );
+    }
+
+    $date->setTime( 0, 0, 0 );
+
+    return $date->format( 'Y-m-d' );
+}
+endif;
+
+/**
+ * Increment weekly honeypot spam bucket for the current week.
+ *
+ * @since 3.9.0
+ *
+ * @param int|null $timestamp Unix timestamp.
+ * @return void
+ */
+if ( ! function_exists( 'cf7apps_increment_honeypot_weekly_spam_count' ) ) :
+function cf7apps_increment_honeypot_weekly_spam_count( $timestamp = null ) {
+    $week_key = cf7apps_get_honeypot_spam_week_key( $timestamp );
+    $weekly   = get_option( 'cf7apps_honeypot_weekly_counts', array() );
+
+    if ( ! is_array( $weekly ) ) {
+        $weekly = array();
+    }
+
+    $weekly[ $week_key ] = isset( $weekly[ $week_key ] ) ? ( (int) $weekly[ $week_key ] + 1 ) : 1;
+
+    if ( count( $weekly ) > 52 ) {
+        ksort( $weekly );
+        $weekly = array_slice( $weekly, -52, null, true );
+    }
+
+    update_option( 'cf7apps_honeypot_weekly_counts', $weekly, false );
+}
+endif;
+
+/**
+ * Get honeypot spam count for a reporting week.
+ *
+ * @since 3.9.0
+ *
+ * @param int $week_start_timestamp Reporting week start (Monday 00:00).
+ * @return int
+ */
+if ( ! function_exists( 'cf7apps_get_honeypot_weekly_spam_count' ) ) :
+function cf7apps_get_honeypot_weekly_spam_count( $week_start_timestamp ) {
+    $week_key = cf7apps_get_honeypot_spam_week_key( (int) $week_start_timestamp );
+    $weekly   = get_option( 'cf7apps_honeypot_weekly_counts', array() );
+
+    if ( ! is_array( $weekly ) || ! isset( $weekly[ $week_key ] ) ) {
+        return 0;
+    }
+
+    return (int) $weekly[ $week_key ];
+}
+endif;
+
+/**
+ * Record a honeypot spam detection (lifetime + weekly counts).
+ *
+ * @since 3.9.0
+ *
+ * @param array $honeypot4cf7_config Honeypot config (passed by reference).
+ * @param bool  $use_cf7apps_settings Whether CF7 Apps settings storage is active.
+ * @return void
+ */
+if ( ! function_exists( 'cf7apps_record_honeypot_spam_detection' ) ) :
+function cf7apps_record_honeypot_spam_detection( &$honeypot4cf7_config, $use_cf7apps_settings ) {
+    $honeypot4cf7_config['honeypot_count'] = isset( $honeypot4cf7_config['honeypot_count'] )
+        ? ( (int) $honeypot4cf7_config['honeypot_count'] + 1 )
+        : 1;
+
+    cf7apps_increment_honeypot_weekly_spam_count();
+
+    if ( $use_cf7apps_settings ) {
+        cf7apps_save_app_settings(
+            'honeypot',
+            array(
+                'honeypot_count' => $honeypot4cf7_config['honeypot_count'],
+            )
+        );
+    } else {
+        update_option( 'honeypot4cf7_config', $honeypot4cf7_config );
+    }
+}
+endif;
+
+/**
  * Migrate Legacy Settings
  * 
  * @since 3.0.0
@@ -52,10 +160,12 @@ function cf7apps_migrate_legacy_settings() {
         $cf7apps_settings['time_check'] = ! empty( $honeypot4cf7_config['timecheck_value'] ) ? $honeypot4cf7_config['timecheck_value'] : '';
         $cf7apps_settings['standard_auto_complete'] = ( ! empty( $honeypot4cf7_config['w3c_valid_autocomplete'][0] ) && $honeypot4cf7_config['w3c_valid_autocomplete'][0] == 'true' ) ? 1 : 0;
         $cf7apps_settings['accessibility_label'] = ( ! empty( $honeypot4cf7_config['nomessage'][0] && $honeypot4cf7_config['nomessage'][0] == 'true' ) ) ? 1 : 0;
+        $cf7apps_settings['silent_spam_response'] = ! empty( $honeypot4cf7_config['silent_spam_response'] ) ? 1 : 0;
         $cf7apps_settings['honeypot_count'] = ! empty( $honeypot4cf7_config['honeypot_count'] ) ? $honeypot4cf7_config['honeypot_count'] : 0;
         $cf7apps_settings['honeypot_install_date'] = ! empty( $honeypot4cf7_config['honeypot_install_date'] ) ? $honeypot4cf7_config['honeypot_install_date'] : time();
         $cf7apps_settings['honeypot_cf7_req_msg_dismissed'] = ! empty( $honeypot4cf7_config['honeypot_cf7_req_msg_dismissed'] ) ? $honeypot4cf7_config['honeypot_cf7_req_msg_dismissed'] : 0;
         $cf7apps_settings['honeypot4cf7_version'] = ! empty( $honeypot4cf7_config['honeypot4cf7_version'] ) ? $honeypot4cf7_config['honeypot4cf7_version'] : CF7APPS_VERSION;
+        $cf7apps_settings['enable_dynamic_honeypot'] = 0;
 
         cf7apps_save_app_settings( 'honeypot', $cf7apps_settings );
         
@@ -81,13 +191,104 @@ function cf7apps_get_default_settings() {
         'time_check'                        => 4,
         'standard_auto_complete'            => 0,
         'accessibility_label'               => 0,
+        'silent_spam_response'            => 0,
         'honeypot_count'                    => 0,
         'honeypot_install_date'             => time(),
         'honeypot_cf7_req_msg_dismissed'    => 0,
-        'honeypot4cf7_version'              => CF7APPS_VERSION
+        'honeypot4cf7_version'              => CF7APPS_VERSION,
+        'enable_dynamic_honeypot'           => 0,
     );
 }
 endif;
+
+/**
+ * One-time migration for the dynamic honeypot toggle.
+ *
+ * @since 3.6.1.2
+ */
+if ( ! function_exists( 'cf7apps_maybe_migrate_dynamic_honeypot_setting' ) ) :
+function cf7apps_maybe_migrate_dynamic_honeypot_setting() {
+    $settings = get_option( 'cf7apps_settings', array() );
+
+    if ( empty( $settings['honeypot'] ) ) {
+        return;
+    }
+
+    if ( array_key_exists( 'enable_dynamic_honeypot', $settings['honeypot'] ) ) {
+        return;
+    }
+
+    $prev_version = $settings['honeypot']['honeypot4cf7_version'] ?? '0.0.0';
+    $settings['honeypot']['enable_dynamic_honeypot'] = version_compare( $prev_version, '3.6.0', '>=' ) ? 1 : 0;
+
+    update_option( 'cf7apps_settings', $settings );
+}
+endif;
+
+/**
+ * Restore redirection_type when a valid external URL was saved but type was reset.
+ *
+ * @since 3.8.1
+ *
+ * @param array $redir_settings cf7-redirection app settings.
+ * @return array
+ */
+if ( ! function_exists( 'cf7apps_repair_redirection_type_settings' ) ) :
+function cf7apps_repair_redirection_type_settings( array $redir_settings ) {
+    $external = isset( $redir_settings['external_url'] ) ? trim( (string) $redir_settings['external_url'] ) : '';
+
+    if ( '' === $external || ! filter_var( $external, FILTER_VALIDATE_URL ) ) {
+        return $redir_settings;
+    }
+
+    $type = isset( $redir_settings['redirection_type'] ) ? (string) $redir_settings['redirection_type'] : '';
+
+    if ( 'external_url' === $type ) {
+        return $redir_settings;
+    }
+
+    if ( '' === $type || 'post_type' === $type ) {
+        $redir_settings['redirection_type'] = 'external_url';
+    }
+
+    return $redir_settings;
+}
+endif;
+
+/**
+ * Run one-time tasks after a plugin version bump (admin).
+ *
+ * @since 3.8.1
+ */
+if ( ! function_exists( 'cf7apps_maybe_run_plugin_upgrade_tasks' ) ) :
+function cf7apps_maybe_run_plugin_upgrade_tasks() {
+    if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+        return;
+    }
+
+    $stored = get_option( 'cf7apps_plugin_db_version', '0' );
+
+    if ( version_compare( (string) $stored, CF7APPS_VERSION, '>=' ) ) {
+        return;
+    }
+
+    cf7apps_maybe_migrate_dynamic_honeypot_setting();
+
+    $settings = get_option( 'cf7apps_settings', array() );
+
+    if ( ! empty( $settings['cf7-redirection'] ) && is_array( $settings['cf7-redirection'] ) ) {
+        $repaired = cf7apps_repair_redirection_type_settings( $settings['cf7-redirection'] );
+
+        if ( $repaired !== $settings['cf7-redirection'] ) {
+            $settings['cf7-redirection'] = $repaired;
+            update_option( 'cf7apps_settings', $settings );
+        }
+    }
+
+    update_option( 'cf7apps_plugin_db_version', CF7APPS_VERSION, false );
+}
+endif;
+add_action( 'admin_init', 'cf7apps_maybe_run_plugin_upgrade_tasks', 5 );
 
 if ( ! function_exists( 'cf7apps_get_post_types_options' ) ) :
     /**
@@ -132,6 +333,143 @@ if ( ! function_exists( 'cf7apps_get_post_types_options' ) ) :
     }
 endif;
 
+if ( ! function_exists( 'cf7apps_is_internal_setting_truthy' ) ) :
+    /**
+     * Whether a per-form internal setting value should be treated as enabled/checked.
+     *
+     * @since 3.6.0
+     *
+     * @param mixed $value Raw setting value.
+     * @return bool
+     */
+    function cf7apps_is_internal_setting_truthy( $value ) {
+        if ( class_exists( 'CF7Apps_Pro_Payment_Checkout', false ) ) {
+            return CF7Apps_Pro_Payment_Checkout::is_truthy( $value );
+        }
+
+        return (bool) filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+    }
+endif;
+
+if ( ! function_exists( 'cf7apps_normalize_internal_app_settings_for_storage' ) ) :
+    /**
+     * Normalize internal app settings before persisting to post meta.
+     *
+     * @since 3.6.0
+     *
+     * @param array $app_settings App settings payload.
+     * @return array
+     */
+    function cf7apps_normalize_internal_app_settings_for_storage( $app_settings ) {
+        if ( ! is_array( $app_settings ) ) {
+            return array();
+        }
+
+        foreach ( $app_settings as $key => $value ) {
+            if ( is_bool( $value ) ) {
+                $app_settings[ $key ] = $value ? 1 : 0;
+            }
+        }
+
+        return $app_settings;
+    }
+endif;
+
+if ( ! function_exists( 'cf7apps_get_payment_gateway_ids' ) ) :
+    /**
+     * Per-form payment gateway app IDs.
+     *
+     * @since 3.6.0
+     * @return string[]
+     */
+    function cf7apps_get_payment_gateway_ids() {
+        return array( 'stripe', 'paypal', 'square' );
+    }
+endif;
+
+if ( ! function_exists( 'cf7apps_get_payment_gateway_label' ) ) :
+    /**
+     * Human-readable payment gateway name.
+     *
+     * @since 3.6.0
+     *
+     * @param string $gateway_id stripe|paypal|square.
+     * @return string
+     */
+    function cf7apps_get_payment_gateway_label( $gateway_id ) {
+        $labels = array(
+            'stripe' => __( 'Stripe', 'cf7apps' ),
+            'paypal' => __( 'PayPal', 'cf7apps' ),
+            'square' => __( 'Square', 'cf7apps' ),
+        );
+
+        return isset( $labels[ $gateway_id ] ) ? $labels[ $gateway_id ] : $gateway_id;
+    }
+endif;
+
+if ( ! function_exists( 'cf7apps_get_form_enabled_payment_gateway' ) ) :
+    /**
+     * Active per-form payment gateway for a CF7 form (at most one).
+     *
+     * @since 3.6.0
+     *
+     * @param int $form_id Form post ID.
+     * @return string Gateway ID or empty string.
+     */
+    function cf7apps_get_form_enabled_payment_gateway( $form_id ) {
+        $form_id = absint( $form_id );
+        if ( $form_id <= 0 ) {
+            return '';
+        }
+
+        $settings = get_post_meta( $form_id, 'cf7apps_settings', true );
+        if ( ! is_array( $settings ) ) {
+            return '';
+        }
+
+        foreach ( cf7apps_get_payment_gateway_ids() as $gateway_id ) {
+            if ( empty( $settings[ $gateway_id ] ) || ! is_array( $settings[ $gateway_id ] ) ) {
+                continue;
+            }
+
+            if ( cf7apps_is_internal_setting_truthy( $settings[ $gateway_id ]['is_enabled'] ?? false ) ) {
+                return $gateway_id;
+            }
+        }
+
+        return '';
+    }
+endif;
+
+if ( ! function_exists( 'cf7apps_enforce_single_form_payment_gateway' ) ) :
+    /**
+     * Ensure only one payment gateway is enabled per form.
+     *
+     * @since 3.6.0
+     *
+     * @param array  $settings        Full cf7apps_settings post meta array (by reference).
+     * @param string $active_gateway  Gateway being enabled.
+     * @return void
+     */
+    function cf7apps_enforce_single_form_payment_gateway( array &$settings, $active_gateway ) {
+        if ( ! in_array( $active_gateway, cf7apps_get_payment_gateway_ids(), true ) ) {
+            return;
+        }
+
+        foreach ( cf7apps_get_payment_gateway_ids() as $gateway_id ) {
+            if ( $gateway_id === $active_gateway ) {
+                continue;
+            }
+
+            if ( ! isset( $settings[ $gateway_id ] ) || ! is_array( $settings[ $gateway_id ] ) ) {
+                continue;
+            }
+
+            $settings[ $gateway_id ]['is_enabled'] = 0;
+        }
+    }
+endif;
+
 if ( ! function_exists( 'cf7apps_save_internal_app_settings' ) ) :
     /**
      * Save Internal App Settings
@@ -144,17 +482,215 @@ if ( ! function_exists( 'cf7apps_save_internal_app_settings' ) ) :
      * @return bool
      */
     function cf7apps_save_internal_app_settings( $id, $form_id, $app_settings  ) {
+        $form_id = absint( $form_id );
+        if ( $form_id <= 0 || empty( $id ) || ! is_array( $app_settings ) ) {
+            return false;
+        }
+
+        $app_settings = cf7apps_normalize_internal_app_settings_for_storage( $app_settings );
+
         $settings = get_post_meta( $form_id, 'cf7apps_settings', true );
         if ( ! is_array( $settings ) ) {
             $settings = array();
         }
 
-        if ( isset( $settings[ $id ] ) ) {
+        if ( isset( $settings[ $id ] ) && is_array( $settings[ $id ] ) ) {
             $settings[ $id ] = array_merge( $settings[ $id ], $app_settings );
         } else {
             $settings[ $id ] = $app_settings;
         }
 
-        return update_post_meta( $form_id, 'cf7apps_settings', $settings );
+        if (
+            in_array( $id, cf7apps_get_payment_gateway_ids(), true )
+            && cf7apps_is_internal_setting_truthy( $settings[ $id ]['is_enabled'] ?? false )
+        ) {
+            cf7apps_enforce_single_form_payment_gateway( $settings, $id );
+        }
+
+        update_post_meta( $form_id, 'cf7apps_settings', $settings );
+
+        // update_post_meta() returns false when the value is unchanged.
+        $saved = get_post_meta( $form_id, 'cf7apps_settings', true );
+
+        return is_array( $saved )
+            && isset( $saved[ $id ] )
+            && is_array( $saved[ $id ] );
     }
+endif;
+
+/**
+ * Global default payment currency from cf7apps_settings[ $app_id ].
+ *
+ * @since 3.6.0
+ *
+ * @param string $app_id   stripe|paypal|square.
+ * @param string $fallback Fallback ISO code.
+ * @return string
+ */
+if ( ! function_exists( 'cf7apps_get_global_payment_currency' ) ) :
+function cf7apps_get_global_payment_currency( $app_id, $fallback = 'USD' ) {
+    if ( class_exists( 'CF7Apps_Pro_Currencies', false ) ) {
+        return CF7Apps_Pro_Currencies::get_global_default_for_app( $app_id, $fallback );
+    }
+
+    $settings = get_option( 'cf7apps_settings', array() );
+    if ( ! is_array( $settings ) || empty( $settings[ $app_id ] ) || ! is_array( $settings[ $app_id ] ) ) {
+        return $fallback;
+    }
+
+    $cur = isset( $settings[ $app_id ]['default_currency'] )
+        ? sanitize_text_field( (string) $settings[ $app_id ]['default_currency'] )
+        : '';
+
+    return '' !== $cur ? $cur : $fallback;
+}
+endif;
+
+/**
+ * Inject global currency into per-form internal settings payload.
+ *
+ * @since 3.6.0
+ *
+ * @param array  $settings Internal settings response.
+ * @param string $app_id   stripe|paypal.
+ * @return array
+ */
+if ( ! function_exists( 'cf7apps_apply_payment_form_currency_defaults' ) ) :
+function cf7apps_apply_payment_form_currency_defaults( array $settings, $app_id ) {
+    if ( ! in_array( $app_id, array( 'stripe', 'paypal' ), true ) ) {
+        return $settings;
+    }
+
+    if ( class_exists( 'CF7Apps_Pro_Currencies', false ) ) {
+        return CF7Apps_Pro_Currencies::apply_per_form_currency_defaults( $settings, $app_id );
+    }
+
+    $cur = cf7apps_get_global_payment_currency( $app_id );
+    $field_key = 'currency';
+
+    $settings['payment_global'] = array(
+        'default_currency' => $cur,
+    );
+
+    if ( empty( $settings['admin_settings']['general']['fields'][ $field_key ] ) ) {
+        return $settings;
+    }
+
+    $field            = &$settings['admin_settings']['general']['fields'][ $field_key ];
+    $field['default'] = $cur;
+
+    if ( ! isset( $field['selected'] ) || '' === (string) $field['selected'] ) {
+        $field['selected'] = $cur;
+    }
+
+    return $settings;
+}
+endif;
+
+if ( ! function_exists( 'cf7apps_has_enabled_internal_settings_app' ) ) :
+    /**
+     * Whether any globally enabled app exposes per-form internal settings.
+     *
+     * @since 3.8.0
+     * @return bool
+     */
+    function cf7apps_has_enabled_internal_settings_app() {
+        $options = get_option( 'cf7apps_settings', array() );
+        if ( ! is_array( $options ) ) {
+            return false;
+        }
+
+        $registered_apps = apply_filters( 'cf7apps_apps', array() );
+        foreach ( $registered_apps as $app_class ) {
+            if ( ! class_exists( $app_class ) ) {
+                continue;
+            }
+
+            $app = new $app_class();
+            if ( empty( $app->has_internal_settings ) || empty( $app->id ) ) {
+                continue;
+            }
+
+            if ( ! empty( $options[ $app->id ]['is_enabled'] ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+endif;
+
+/**
+ * Whether CF7 Apps Pro is active.
+ *
+ * @since 3.6.0
+ *
+ * @return bool
+ */
+if ( ! function_exists( 'cf7apps_has_pro' ) ) :
+function cf7apps_has_pro() {
+    return (bool) apply_filters(
+        'cf7apps_has_pro',
+        class_exists( 'CF7Apps_Pro_Stripe', false )
+    );
+}
+endif;
+
+if ( ! function_exists( 'cf7apps_get_entries_forms_options' ) ) :
+/**
+ * Get Contact Form 7 forms for Entries settings and exports.
+ *
+ * @since 3.7.3
+ *
+ * @return array
+ */
+function cf7apps_get_entries_forms_options() {
+    $cf7_forms = get_posts(
+        array(
+            'post_type'      => 'wpcf7_contact_form',
+            'posts_per_page' => -1,
+            'post_status'    => 'publish',
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+        )
+    );
+
+    $options = array(
+        'all' => __( 'All Forms', 'cf7apps' ),
+    );
+
+    foreach ( $cf7_forms as $cf7_form ) {
+        $options[ (string) $cf7_form->ID ] = $cf7_form->post_title;
+    }
+
+    return $options;
+}
+endif;
+
+/**
+ * Whether the current request is the CF7 Apps form Preview (display-only).
+ *
+ * HFCF7-640: Preview must not submit, log entries, or trigger integrations.
+ *
+ * @since 3.9.0
+ *
+ * @return bool
+ */
+if ( ! function_exists( 'cf7apps_is_form_preview_request' ) ) :
+function cf7apps_is_form_preview_request() {
+	if ( isset( $_GET['cf7apps_form_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return true;
+	}
+
+	if ( ! empty( $_POST['_cf7apps_form_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		return true;
+	}
+
+	$referer = isset( $_SERVER['HTTP_REFERER'] ) ? (string) wp_unslash( $_SERVER['HTTP_REFERER'] ) : '';
+	if ( '' !== $referer && false !== strpos( $referer, 'cf7apps_form_preview=' ) ) {
+		return true;
+	}
+
+	return (bool) apply_filters( 'cf7apps_is_form_preview_request', false );
+}
 endif;

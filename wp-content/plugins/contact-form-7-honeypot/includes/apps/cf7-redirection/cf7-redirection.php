@@ -21,7 +21,7 @@ if ( ! class_exists( 'CF7Apps_Redirection' ) && class_exists( 'CF7Apps_App' ) ) 
          * @since 3.2.1
          * @var string $app_version App version.
          */
-        private $app_version = '1.0.0';
+        private $app_version = '1.0.1';
 
         /**
          * CF7Apps_Redirection constructor.
@@ -39,7 +39,7 @@ if ( ! class_exists( 'CF7Apps_Redirection' ) && class_exists( 'CF7Apps_App' ) ) 
             $this->by_default_enabled    = false;
             $this->has_internal_settings = true;
             $this->documentation_url     = 'https://cf7apps.com/docs/general/redirection';
-            $this->parent_menu           = __( 'General', 'cf7apps' );
+            $this->parent_menu           = 'general';
 
             $this->run();
         }
@@ -353,8 +353,29 @@ if ( ! class_exists( 'CF7Apps_Redirection' ) && class_exists( 'CF7Apps_App' ) ) 
         public function fetch_app_settings() {
             if ( $this->get_option( 'is_enabled' ) ) {
 
+                // HFCF7-640: Preview Form must not redirect.
+                if ( function_exists( 'cf7apps_is_form_preview_request' ) && cf7apps_is_form_preview_request() ) {
+                    wp_send_json_error(
+                        array(
+                            'message' => __( 'Redirection is disabled in form preview.', 'cf7apps' ),
+                        ),
+                        403
+                    );
+                }
+
                 if ( isset( $_POST['formId'] ) ) {
                     $form_id             = intval( wp_unslash( $_POST['formId'] ) );
+                    if ( function_exists( 'cf7apps_get_form_enabled_payment_gateway' ) ) {
+                        $active_gateway = cf7apps_get_form_enabled_payment_gateway( $form_id );
+                        if ( '' !== $active_gateway ) {
+                            wp_send_json_error(
+                                array(
+                                    'message' => __( 'Redirection is skipped because a payment gateway is enabled for this form.', 'cf7apps' ),
+                                ),
+                                403
+                            );
+                        }
+                    }
                     $global_app_enabled  = $this->get_option( 'global_settings' ); // from global app settings.
                     $form_settings      = $this->get_individual_option( $form_id );
                     $default_settings   = $this->get_default_settings();
@@ -487,10 +508,60 @@ if ( ! class_exists( 'CF7Apps_Redirection' ) && class_exists( 'CF7Apps_App' ) ) 
                     'cf7apps-redirection',
                     'cf7appsRedirection',
                     array(
-                        'ajaxurl' => admin_url( 'admin-ajax.php' ),
+                        'ajaxurl'              => admin_url( 'admin-ajax.php' ),
+                        'paymentGatewayForms'  => $this->get_payment_gateway_forms_on_page(),
                     )
                 );
             }
+        }
+
+        /**
+         * Map CF7 form IDs on the current page that have an active payment gateway.
+         *
+         * @since 3.6.0
+         * @return array<string, string> Form ID => gateway ID.
+         */
+        private function get_payment_gateway_forms_on_page() {
+            if ( ! function_exists( 'cf7apps_get_form_enabled_payment_gateway' ) ) {
+                return array();
+            }
+
+            $forms = array();
+
+            if ( ! class_exists( 'WPCF7_ContactForm' ) || ! is_singular() ) {
+                return $forms;
+            }
+
+            $post = get_post();
+            if ( ! $post instanceof WP_Post ) {
+                return $forms;
+            }
+
+            $pattern = get_shortcode_regex( array( 'contact-form-7' ) );
+            if ( ! preg_match_all( '/' . $pattern . '/', $post->post_content, $matches, PREG_SET_ORDER ) ) {
+                return $forms;
+            }
+
+            foreach ( $matches as $match ) {
+                $form_id = 0;
+                if ( ! empty( $match[3] ) ) {
+                    $atts = shortcode_parse_atts( $match[3] );
+                    if ( ! empty( $atts['id'] ) ) {
+                        $form_id = absint( $atts['id'] );
+                    }
+                }
+
+                if ( $form_id <= 0 ) {
+                    continue;
+                }
+
+                $gateway = cf7apps_get_form_enabled_payment_gateway( $form_id );
+                if ( '' !== $gateway ) {
+                    $forms[ (string) $form_id ] = $gateway;
+                }
+            }
+
+            return $forms;
         }
     }
 

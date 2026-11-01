@@ -1,9 +1,11 @@
 import { __ } from '@wordpress/i18n';
 
-const CF7AppsPopup = ( { children, title, onClose } ) => {
+const CF7AppsPopup = ( { children, title, onClose, className = '' } ) => {
+    const contentClass = [ 'cf7apps-popup-content', className ].filter( Boolean ).join( ' ' );
+
     return (
         <div className={ 'cf7apps-popup-container' }>
-            <div className="cf7apps-popup-content">
+            <div className={ contentClass }>
                 <button className="cf7apps-popup-close" onClick={ onClose } aria-label={ __( 'Close', 'cf7apps' ) }>
                     &times;
                 </button>
