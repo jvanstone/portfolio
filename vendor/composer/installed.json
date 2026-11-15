@@ -152,24 +152,24 @@
         },
         {
             "name": "symfony/deprecation-contracts",
-            "version": "v3.7.1",
-            "version_normalized": "3.7.1.0",
+            "version": "v3.8.1",
+            "version_normalized": "3.8.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/deprecation-contracts.git",
-                "reference": "f3202fa1b5097b0af062dc978b32ecf63404e31d"
+                "reference": "feb1edf4e546af3b85c5caebe8359a20db230ca3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/f3202fa1b5097b0af062dc978b32ecf63404e31d",
-                "reference": "f3202fa1b5097b0af062dc978b32ecf63404e31d",
+                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/feb1edf4e546af3b85c5caebe8359a20db230ca3",
+                "reference": "feb1edf4e546af3b85c5caebe8359a20db230ca3",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.1"
             },
-            "time": "2026-06-05T06:23:12+00:00",
-            "published-time": "2026-06-27T21:46:34+00:00",
+            "time": "2026-09-16T14:15:10+00:00",
+            "published-time": "2026-11-04T11:25:34+00:00",
             "type": "library",
             "extra": {
                 "thanks": {
@@ -177,7 +177,7 @@
                     "name": "symfony/contracts"
                 },
                 "branch-alias": {
-                    "dev-main": "3.7-dev"
+                    "dev-main": "3.8-dev"
                 }
             },
             "installation-source": "dist",
@@ -203,7 +203,7 @@
             "description": "A generic function and convention to trigger deprecation notices",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.7.1"
+                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.8.1"
             },
             "funding": [
                 {
@@ -608,22 +608,22 @@
         },
         {
             "name": "wp-plugin/advanced-custom-fields",
-            "version": "6.8.10",
-            "version_normalized": "6.8.10.0",
+            "version": "6.8.11",
+            "version_normalized": "6.8.11.0",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/advanced-custom-fields/",
-                "reference": "tags/6.8.10"
+                "reference": "tags/6.8.11"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/advanced-custom-fields.6.8.10.zip"
+                "url": "https://downloads.wordpress.org/plugin/advanced-custom-fields.6.8.11.zip"
             },
             "require": {
                 "composer/installers": "~1.0|~2.0"
             },
-            "time": "2026-09-29T13:03:58+00:00",
-            "published-time": "2026-09-29T13:03:58+00:00",
+            "time": "2026-11-02T17:51:52+00:00",
+            "published-time": "2026-11-02T17:51:52+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "notification-url": "https://wp-packages.org/downloads",
@@ -677,22 +677,22 @@
         },
         {
             "name": "wp-plugin/contact-form-7",
-            "version": "6.2.4.1",
-            "version_normalized": "6.2.4.1",
+            "version": "6.2.5",
+            "version_normalized": "6.2.5.0",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/contact-form-7/",
-                "reference": "tags/6.2.4.1"
+                "reference": "tags/6.2.5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/contact-form-7.6.2.4.1.zip"
+                "url": "https://downloads.wordpress.org/plugin/contact-form-7.6.2.5.zip"
             },
             "require": {
                 "composer/installers": "~1.0|~2.0"
             },
-            "time": "2026-10-29T11:49:08+00:00",
-            "published-time": "2026-10-29T11:49:08+00:00",
+            "time": "2026-11-10T05:51:36+00:00",
+            "published-time": "2026-11-10T05:51:36+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "notification-url": "https://wp-packages.org/downloads",
@@ -817,22 +817,22 @@
         },
         {
             "name": "wp-plugin/litespeed-cache",
-            "version": "7.9.2",
-            "version_normalized": "7.9.2.0",
+            "version": "7.9.3",
+            "version_normalized": "7.9.3.0",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/litespeed-cache/",
-                "reference": "tags/7.9.2"
+                "reference": "tags/7.9.3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/litespeed-cache.7.9.2.zip"
+                "url": "https://downloads.wordpress.org/plugin/litespeed-cache.7.9.3.zip"
             },
             "require": {
                 "composer/installers": "~1.0|~2.0"
             },
-            "time": "2026-10-20T18:08:55+00:00",
-            "published-time": "2026-10-20T18:08:55+00:00",
+            "time": "2026-11-03T20:22:04+00:00",
+            "published-time": "2026-11-03T20:22:04+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "notification-url": "https://wp-packages.org/downloads",
@@ -886,22 +886,22 @@
         },
         {
             "name": "wp-plugin/polylang",
-            "version": "3.9.1",
-            "version_normalized": "3.9.1.0",
+            "version": "3.9.2",
+            "version_normalized": "3.9.2.0",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/polylang/",
-                "reference": "tags/3.9.1"
+                "reference": "tags/3.9.2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/polylang.3.9.1.zip"
+                "url": "https://downloads.wordpress.org/plugin/polylang.3.9.2.zip"
             },
             "require": {
                 "composer/installers": "~1.0|~2.0"
             },
-            "time": "2026-10-21T15:54:34+00:00",
-            "published-time": "2026-10-21T15:54:34+00:00",
+            "time": "2026-11-09T09:07:36+00:00",
+            "published-time": "2026-11-09T09:07:36+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "notification-url": "https://wp-packages.org/downloads",
