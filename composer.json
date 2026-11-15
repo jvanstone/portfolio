@@ -21,7 +21,8 @@
         "wp-plugin/polylang": "^3.9",
         "wp-plugin/theme-translation-for-polylang": "^3.4",
         "wp-plugin/wordpress-seo": "^28.8",
-        "wp-plugin/cf7-antispam": "^0.7.6"
+        "wp-plugin/cf7-antispam": "^0.7.6",
+        "wp-theme/twentytwentyfive": "^1.5"
     },
     "config": {
         "allow-plugins": {
